@@ -310,9 +310,121 @@ const handleSubscriptionWebhook: RequestHandler = async (req, res) => {
     }
 };
 
+// Check subscription status for specific type
+const checkSubscriptionStatus: RequestHandler = async (req, res) => {
+    try {
+        const { type } = req.query;
+        const user = req.user;
+
+        if (!user) {
+            return ErrorHandler({
+                message: 'User not found',
+                statusCode: 404,
+                req,
+                res
+            });
+        }
+
+        let query: any = { user: user._id };
+
+        if (type && type !== 'all') {
+            query.type = type;
+        }
+
+        const subscriptions = await Subscription.find(query)
+            .sort({ createdAt: -1 })
+            .limit(10);
+
+        const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
+        const cancelledSubscriptions = subscriptions.filter(sub => sub.status === 'cancelled');
+        const expiredSubscriptions = subscriptions.filter(sub => sub.status === 'expired');
+
+        const statusSummary = {
+            total: subscriptions.length,
+            active: activeSubscriptions.length,
+            cancelled: cancelledSubscriptions.length,
+            expired: expiredSubscriptions.length,
+            subscriptions: subscriptions.map(sub => ({
+                id: sub._id,
+                type: sub.type,
+                platform: sub.platform,
+                status: sub.status,
+                startDate: sub.startDate,
+                endDate: sub.endDate,
+                autoRenew: sub.autoRenew,
+                lastVerifiedAt: sub.lastVerifiedAt
+            }))
+        };
+
+        return SuccessHandler({
+            res,
+            data: statusSummary,
+            statusCode: 200
+        });
+    } catch (error) {
+        return ErrorHandler({
+            message: (error as Error).message,
+            statusCode: 500,
+            req,
+            res
+        });
+    }
+};
+
+// Get subscription history
+const getSubscriptionHistory: RequestHandler = async (req, res) => {
+    try {
+        const user = req.user;
+
+        if (!user) {
+            return ErrorHandler({
+                message: 'User not found',
+                statusCode: 404,
+                req,
+                res
+            });
+        }
+
+        const subscriptions = await Subscription.find({ user: user._id })
+            .sort({ createdAt: -1 })
+            .populate('user', 'name email');
+
+        const history = subscriptions.map(sub => ({
+            id: sub._id,
+            type: sub.type,
+            platform: sub.platform,
+            status: sub.status,
+            startDate: sub.startDate,
+            endDate: sub.endDate,
+            autoRenew: sub.autoRenew,
+            lastVerifiedAt: sub.lastVerifiedAt,
+            createdAt: sub.createdAt,
+            updatedAt: sub.updatedAt
+        }));
+
+        return SuccessHandler({
+            res,
+            data: {
+                total: history.length,
+                history
+            },
+            statusCode: 200
+        });
+    } catch (error) {
+        return ErrorHandler({
+            message: (error as Error).message,
+            statusCode: 500,
+            req,
+            res
+        });
+    }
+};
+
 export {
     verifySubscription,
     getUserSubscriptions,
     cancelSubscription,
-    handleSubscriptionWebhook
+    handleSubscriptionWebhook,
+    checkSubscriptionStatus,
+    getSubscriptionHistory
 }; 
