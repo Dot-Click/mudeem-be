@@ -1,6 +1,6 @@
 import express from 'express';
 import { isAuthenticated } from '../middleware/auth.middleware';
-import { validateRequest } from '../middleware/validation.middleware';
+import { validate } from '../middleware/validate.middleware';
 import {
     verifySubscription,
     getUserSubscriptions,
@@ -21,7 +21,7 @@ const router = express.Router();
 // Protected routes (require authentication)
 router.post('/verify',
     isAuthenticated,
-    validateRequest(verifySubscriptionSchema),
+    validate(verifySubscriptionSchema),
     verifySubscription
 );
 
@@ -32,7 +32,7 @@ router.get('/my-subscriptions',
 
 router.get('/status',
     isAuthenticated,
-    validateRequest(subscriptionStatusSchema, 'query'),
+    validate(subscriptionStatusSchema),
     checkSubscriptionStatus
 );
 
@@ -43,13 +43,13 @@ router.get('/history',
 
 router.post('/cancel/:subscriptionId',
     isAuthenticated,
-    validateRequest(cancelSubscriptionSchema, 'params'),
+    validate(cancelSubscriptionSchema),
     cancelSubscription
 );
 
 // Webhook endpoint (no authentication required as it will be called by Google/Apple)
 router.post('/webhook',
-    validateRequest(webhookSchema),
+    validate(webhookSchema),
     handleSubscriptionWebhook
 );
 
