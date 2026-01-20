@@ -1,4 +1,4 @@
-import User from '../models/User/user.model';
+import User from '../models/user/user.model';
 import { IUser, UserSession } from '../types/models/user';
 import SuccessHandler from '../utils/successHandler';
 import ErrorHandler from '../utils/errorHandler';

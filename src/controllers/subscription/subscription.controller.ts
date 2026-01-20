@@ -1,8 +1,8 @@
 import { RequestHandler } from 'express';
 import ErrorHandler from '../../utils/errorHandler';
 import SuccessHandler from '../../utils/successHandler';
-import Subscription from '../../models/User/subscription.model';
-import User from '../../models/User/user.model';
+import Subscription from '../../models/user/subscription.model';
+import User from '../../models/user/user.model';
 import { verifyGooglePlaySubscription } from '../../utils/googlePlay';
 import { verifyAppleSubscription } from '../../utils/appleStore';
 import { ISubscription } from '../../types/models/user';

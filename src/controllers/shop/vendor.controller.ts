@@ -1,7 +1,7 @@
 import SuccessHandler from '../../utils/successHandler';
 import ErrorHandler from '../../utils/errorHandler';
 import { RequestHandler } from 'express';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import { IUser } from '../../types/models/user';
 import SendMail from '../../utils/sendMail';
 

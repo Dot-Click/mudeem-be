@@ -4,9 +4,9 @@ import { RequestHandler } from 'express';
 import { IOrder, IProduct, IVariant } from '../../types/models/shop';
 import Product from '../../models/shop/product.model';
 import Variant from '../../models/shop/variant.model';
-import Address from '../../models/User/address.model';
+import Address from '../../models/user/address.model';
 import Order from '../../models/shop/order.model';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import Review from '../../models/shop/review.model';
 
 const checkout: RequestHandler = async (req, res) => {

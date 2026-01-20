@@ -1,6 +1,6 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
-import User from '../models/User/user.model';
+import User from '../models/user/user.model';
 import { IUser } from '../types/models/user';
 
 passport.use(

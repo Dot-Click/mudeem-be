@@ -4,7 +4,7 @@ import SuccessHandler from '../../utils/successHandler';
 import Pool from '../../models/carpooling/pool';
 import mongoose from 'mongoose';
 import { ObjectId } from 'mongodb';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import { Setting } from '../../models/settings';
 import { sentPushNotification } from '../../utils/firebase';
 import { IUser } from '../../types/models/user';

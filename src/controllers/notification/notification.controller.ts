@@ -2,7 +2,7 @@ import { RequestHandler } from 'express';
 import ErrorHandler from '../../utils/errorHandler';
 import SuccessHandler from '../../utils/successHandler';
 import GreenMap from '../../models/green-map/green-map.model';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import Notification from '../../models/notifications/notifications_model';
 import mongoose, { Error } from 'mongoose';
 

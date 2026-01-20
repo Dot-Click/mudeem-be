@@ -4,7 +4,7 @@ import uploadFile from '../../utils/upload';
 import Reel from '../../models/content-creator/reel';
 import ReelComment from '../../models/content-creator/reel-comment';
 import mongoose from 'mongoose';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import SuccessHandler from '../../utils/successHandler';
 import { sentPushNotification } from '../../utils/firebase';
 import ContentCreator from '../../models/content-creator/reel';

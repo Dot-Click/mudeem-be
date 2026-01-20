@@ -3,7 +3,7 @@ import ErrorHandler from '../../utils/errorHandler';
 import SuccessHandler from '../../utils/successHandler';
 import Company from '../../models/waste/company.model';
 import Waste from '../../models/waste/request.model';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import { sentPushNotification } from '../../utils/firebase';
 
 const createCompany: RequestHandler = async (req, res) => {

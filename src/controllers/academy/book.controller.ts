@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import SuccessHandler from '../../utils/successHandler';
 import uploadFile from '../../utils/upload';
 import Book from '../../models/academy/book';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 
 const createBook: RequestHandler = async (req, res) => {
   // #swagger.tags = ['academy']

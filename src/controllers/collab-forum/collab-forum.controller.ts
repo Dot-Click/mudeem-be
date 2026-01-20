@@ -6,7 +6,7 @@ import Post from '../../models/collab-forum/post';
 import uploadFile from '../../utils/upload';
 import Comment from '../../models/collab-forum/comment';
 import path from 'path';
-import User from '../../models/User/user.model';
+import User from '../../models/user/user.model';
 import { sentPushNotification } from '../../utils/firebase';
 
 const createPost: RequestHandler = async (req, res) => {
