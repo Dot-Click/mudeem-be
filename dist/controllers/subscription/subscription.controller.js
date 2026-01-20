@@ -133,7 +133,7 @@ const getUserSubscriptions = (req, res) => __awaiter(void 0, void 0, void 0, fun
             }
         };
         // Update status for each subscription type
-        subscriptions.forEach(sub => {
+        subscriptions.forEach((sub) => {
             if (sub.type === 'sustainbuddy_gpt' && sub.status === 'active') {
                 subscriptionStatus.sustainbuddyGPT.active = true;
                 subscriptionStatus.sustainbuddyGPT.subscription = sub.toObject();
@@ -306,15 +306,15 @@ const checkSubscriptionStatus = (req, res) => __awaiter(void 0, void 0, void 0, 
         const subscriptions = yield subscription_model_1.default.find(query)
             .sort({ createdAt: -1 })
             .limit(10);
-        const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-        const cancelledSubscriptions = subscriptions.filter(sub => sub.status === 'cancelled');
-        const expiredSubscriptions = subscriptions.filter(sub => sub.status === 'expired');
+        const activeSubscriptions = subscriptions.filter((sub) => sub.status === 'active');
+        const cancelledSubscriptions = subscriptions.filter((sub) => sub.status === 'cancelled');
+        const expiredSubscriptions = subscriptions.filter((sub) => sub.status === 'expired');
         const statusSummary = {
             total: subscriptions.length,
             active: activeSubscriptions.length,
             cancelled: cancelledSubscriptions.length,
             expired: expiredSubscriptions.length,
-            subscriptions: subscriptions.map(sub => ({
+            subscriptions: subscriptions.map((sub) => ({
                 id: sub._id,
                 type: sub.type,
                 platform: sub.platform,
@@ -356,7 +356,7 @@ const getSubscriptionHistory = (req, res) => __awaiter(void 0, void 0, void 0, f
         const subscriptions = yield subscription_model_1.default.find({ user: user._id })
             .sort({ createdAt: -1 })
             .populate('user', 'name email');
-        const history = subscriptions.map(sub => ({
+        const history = subscriptions.map((sub) => ({
             id: sub._id,
             type: sub.type,
             platform: sub.platform,

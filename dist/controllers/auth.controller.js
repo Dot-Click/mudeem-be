@@ -131,6 +131,14 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             password,
             role
         });
+        if (!newUser) {
+            return (0, errorHandler_1.default)({
+                message: 'Failed to create user',
+                statusCode: 500,
+                req,
+                res
+            });
+        }
         newUser.save();
         (0, successHandler_1.default)({
             data: newUser,

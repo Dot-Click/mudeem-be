@@ -145,7 +145,7 @@ const getUserSubscriptions: RequestHandler = async (req, res) => {
         };
 
         // Update status for each subscription type
-        subscriptions.forEach(sub => {
+        subscriptions.forEach((sub: ISubscription) => {
             if (sub.type === 'sustainbuddy_gpt' && sub.status === 'active') {
                 subscriptionStatus.sustainbuddyGPT.active = true;
                 subscriptionStatus.sustainbuddyGPT.subscription = sub.toObject();
@@ -335,16 +335,16 @@ const checkSubscriptionStatus: RequestHandler = async (req, res) => {
             .sort({ createdAt: -1 })
             .limit(10);
 
-        const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active');
-        const cancelledSubscriptions = subscriptions.filter(sub => sub.status === 'cancelled');
-        const expiredSubscriptions = subscriptions.filter(sub => sub.status === 'expired');
+        const activeSubscriptions = subscriptions.filter((sub: ISubscription) => sub.status === 'active');
+        const cancelledSubscriptions = subscriptions.filter((sub: ISubscription) => sub.status === 'cancelled');
+        const expiredSubscriptions = subscriptions.filter((sub: ISubscription) => sub.status === 'expired');
 
         const statusSummary = {
             total: subscriptions.length,
             active: activeSubscriptions.length,
             cancelled: cancelledSubscriptions.length,
             expired: expiredSubscriptions.length,
-            subscriptions: subscriptions.map(sub => ({
+            subscriptions: subscriptions.map((sub: ISubscription) => ({
                 id: sub._id,
                 type: sub.type,
                 platform: sub.platform,
@@ -389,7 +389,7 @@ const getSubscriptionHistory: RequestHandler = async (req, res) => {
             .sort({ createdAt: -1 })
             .populate('user', 'name email');
 
-        const history = subscriptions.map(sub => ({
+        const history = subscriptions.map((sub: ISubscription) => ({
             id: sub._id,
             type: sub.type,
             platform: sub.platform,

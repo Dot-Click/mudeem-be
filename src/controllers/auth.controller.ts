@@ -123,6 +123,14 @@ const register: RequestHandler = async (req, res) => {
       password,
       role
     });
+    if (!newUser) {
+      return ErrorHandler({
+        message: 'Failed to create user',
+        statusCode: 500,
+        req,
+        res
+      });
+    }
     newUser.save();
     SuccessHandler({
       data: newUser,
@@ -132,7 +140,7 @@ const register: RequestHandler = async (req, res) => {
 
     if (role === 'vendor') {
       const admins = await User.find({ role: 'admin' });
-      admins.forEach(async (admin) => {
+      admins.forEach(async (admin: IUser) => {
         await SendMail({
           email: admin.email,
           subject: 'New Vendor Registered',
