@@ -1,4 +1,6 @@
-FROM node:18-alpine
+# Use Debian slim instead of Alpine to avoid TLS/OpenSSL issues with MongoDB Atlas
+# (ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR is common when connecting from Alpine on Railway)
+FROM node:18-slim
 WORKDIR /app
 COPY package*.json ./
 RUN npm install

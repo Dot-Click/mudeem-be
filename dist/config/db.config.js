@@ -15,7 +15,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        yield mongoose_1.default.connect(process.env.MONGO_URI);
+        yield mongoose_1.default.connect(process.env.MONGO_URI, {
+            tls: true,
+            tlsAllowInvalidCertificates: true,
+            tlsAllowInvalidHostnames: true,
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+        });
         console.log('DB connected: ' + mongoose_1.default.connection.host);
     }
     catch (error) {

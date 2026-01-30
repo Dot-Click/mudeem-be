@@ -49,7 +49,14 @@ app.use(
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
-      stringify: false
+      stringify: false,
+      mongoOptions: {
+        tls: true,
+        tlsAllowInvalidCertificates: true,
+        tlsAllowInvalidHostnames: true,
+        serverSelectionTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+      }
     }),
     cookie: cookieOptions
   })

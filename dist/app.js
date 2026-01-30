@@ -47,7 +47,14 @@ app.use((0, express_session_1.default)({
     saveUninitialized: false,
     store: connect_mongo_1.default.create({
         mongoUrl: process.env.MONGO_URI,
-        stringify: false
+        stringify: false,
+        mongoOptions: {
+            tls: true,
+            tlsAllowInvalidCertificates: true,
+            tlsAllowInvalidHostnames: true,
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 45000,
+        }
     }),
     cookie: cookieOptions
 }));
