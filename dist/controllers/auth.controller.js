@@ -22,6 +22,13 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const sendMail_1 = __importDefault(require("../utils/sendMail"));
 const upload_1 = __importDefault(require("../utils/upload"));
 const firebase_1 = require("../utils/firebase");
+/** Case-insensitive email lookup (trimmed). Use for forgot password, reset, verify email. */
+const findUserByEmail = (email, select) => {
+    const trimmed = (email !== null && email !== void 0 ? email : '').trim().toLowerCase();
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const q = user_model_1.default.findOne({ email: { $regex: new RegExp('^' + escaped + '$', 'i') } });
+    return select ? q.select(select) : q;
+};
 const pushNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
@@ -171,7 +178,7 @@ const requestEmailToken = (req, res) => __awaiter(void 0, void 0, void 0, functi
     // #swagger.tags = ['auth']
     try {
         const { email } = req.body;
-        const user = yield user_model_1.default.findOne({ email });
+        const user = yield findUserByEmail(email !== null && email !== void 0 ? email : '');
         if (!user) {
             return (0, errorHandler_1.default)({
                 message: 'User does not exist',
@@ -213,7 +220,7 @@ const verifyEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     // #swagger.tags = ['auth']
     try {
         const { email, emailVerificationToken } = req.body;
-        const user = yield user_model_1.default.findOne({ email });
+        const user = yield findUserByEmail(email !== null && email !== void 0 ? email : '');
         if (!user) {
             return res.status(400).json({
                 success: false,
@@ -372,7 +379,7 @@ const forgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function*
     // #swagger.tags = ['auth']
     try {
         const { email } = req.body;
-        const user = yield user_model_1.default.findOne({ email });
+        const user = yield findUserByEmail(email !== null && email !== void 0 ? email : '');
         if (!user) {
             return (0, errorHandler_1.default)({
                 message: 'User does not exist',
@@ -411,7 +418,7 @@ const resetPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     var _a;
     try {
         const { email, passwordResetToken, password } = req.body;
-        const user = yield user_model_1.default.findOne({ email }).select('+password');
+        const user = yield findUserByEmail(email !== null && email !== void 0 ? email : '', '+password');
         if (!user) {
             return (0, errorHandler_1.default)({
                 message: 'User does not exist',

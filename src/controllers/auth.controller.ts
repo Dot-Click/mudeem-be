@@ -11,6 +11,14 @@ import SendMail from '../utils/sendMail';
 import uploadFile from '../utils/upload';
 import { sentPushNotification } from '../utils/firebase';
 
+/** Case-insensitive email lookup (trimmed). Use for forgot password, reset, verify email. */
+const findUserByEmail = (email: string, select?: string) => {
+  const trimmed = (email ?? '').trim().toLowerCase();
+  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const q = User.findOne({ email: { $regex: new RegExp('^' + escaped + '$', 'i') } });
+  return select ? q.select(select) : q;
+};
+
 const pushNotification: RequestHandler = async (req, res) => {
   try {
     const { title, body } = req.body;
@@ -163,7 +171,7 @@ const requestEmailToken: RequestHandler = async (req, res) => {
   // #swagger.tags = ['auth']
   try {
     const { email } = req.body as authTypes.RequestEmailTokenBody;
-    const user: IUser | null = await User.findOne({ email });
+    const user: IUser | null = await findUserByEmail(email ?? '');
     if (!user) {
       return ErrorHandler({
         message: 'User does not exist',
@@ -210,7 +218,7 @@ const verifyEmail: RequestHandler = async (req, res) => {
   try {
     const { email, emailVerificationToken } =
       req.body as authTypes.VerifyEmailTokenBody;
-    const user: IUser | null = await User.findOne({ email });
+    const user: IUser | null = await findUserByEmail(email ?? '');
     if (!user) {
       return res.status(400).json({
         success: false,
@@ -372,7 +380,7 @@ const forgotPassword: RequestHandler = async (req, res) => {
 
   try {
     const { email } = req.body as authTypes.RequestEmailTokenBody;
-    const user: IUser | null = await User.findOne({ email });
+    const user: IUser | null = await findUserByEmail(email ?? '');
     if (!user) {
       return ErrorHandler({
         message: 'User does not exist',
@@ -415,9 +423,7 @@ const resetPassword: RequestHandler = async (req, res) => {
   try {
     const { email, passwordResetToken, password } =
       req.body as authTypes.ResetPasswordBody;
-    const user: IUser | null = await User.findOne({ email }).select(
-      '+password'
-    );
+    const user: IUser | null = await findUserByEmail(email ?? '', '+password');
     if (!user) {
       return ErrorHandler({
         message: 'User does not exist',
