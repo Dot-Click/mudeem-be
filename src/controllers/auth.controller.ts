@@ -11,12 +11,13 @@ import SendMail from '../utils/sendMail';
 import uploadFile from '../utils/upload';
 import { sentPushNotification } from '../utils/firebase';
 
-/** Case-insensitive email lookup (trimmed). Use for forgot password, reset, verify email. */
-const findUserByEmail = (email: string, select?: string) => {
-  const trimmed = (email ?? '').trim().toLowerCase();
-  const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const q = User.findOne({ email: { $regex: new RegExp('^' + escaped + '$', 'i') } });
-  return select ? q.select(select) : q;
+/** Case-insensitive email lookup (trimmed). Uses MongoDB collation so casing never matters. */
+const findUserByEmail = async (email: string, select?: string): Promise<IUser | null> => {
+  const trimmed = (email ?? '').trim();
+  if (!trimmed) return null;
+  let q = User.findOne({ email: trimmed }).collation({ locale: 'en', strength: 2 });
+  if (select) q = q.select(select);
+  return q;
 };
 
 const pushNotification: RequestHandler = async (req, res) => {

@@ -22,13 +22,16 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const sendMail_1 = __importDefault(require("../utils/sendMail"));
 const upload_1 = __importDefault(require("../utils/upload"));
 const firebase_1 = require("../utils/firebase");
-/** Case-insensitive email lookup (trimmed). Use for forgot password, reset, verify email. */
-const findUserByEmail = (email, select) => {
-    const trimmed = (email !== null && email !== void 0 ? email : '').trim().toLowerCase();
-    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const q = user_model_1.default.findOne({ email: { $regex: new RegExp('^' + escaped + '$', 'i') } });
-    return select ? q.select(select) : q;
-};
+/** Case-insensitive email lookup (trimmed). Uses MongoDB collation so casing never matters. */
+const findUserByEmail = (email, select) => __awaiter(void 0, void 0, void 0, function* () {
+    const trimmed = (email !== null && email !== void 0 ? email : '').trim();
+    if (!trimmed)
+        return null;
+    let q = user_model_1.default.findOne({ email: trimmed }).collation({ locale: 'en', strength: 2 });
+    if (select)
+        q = q.select(select);
+    return q;
+});
 const pushNotification = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
