@@ -32,19 +32,20 @@ export const cancelSubscriptionSchema = Joi.object({
         })
 });
 
-// Validation schema for webhook events
-export const webhookSchema = Joi.object({
-    platform: Joi.string()
-        .valid('google_play', 'apple_store')
-        .required(),
-    event: Joi.string()
-        .valid('subscription_renewed', 'subscription_cancelled', 'subscription_expired')
-        .required(),
-    subscriptionId: Joi.string()
-        .required(),
-    data: Joi.object({
-        newExpiryDate: Joi.date().optional()
-    }).optional()
+// Validation schema for Apple webhook events
+export const appleWebhookSchema = Joi.object({
+    signedPayload: Joi.string()
+        .required()
+});
+
+// Validation schema for Google webhook events
+export const googleWebhookSchema = Joi.object({
+    message: Joi.object({
+        data: Joi.string().required(),
+        messageId: Joi.string().required(),
+        publishTime: Joi.string().required(),
+    }).required(),
+    subscription: Joi.string().required(),
 });
 
 // Validation schema for subscription status query

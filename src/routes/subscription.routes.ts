@@ -5,14 +5,16 @@ import {
     verifySubscription,
     getUserSubscriptions,
     cancelSubscription,
-    handleSubscriptionWebhook,
+    handleSubscriptionWebhookApple,
+    handleSubscriptionWebhookGoogle,
     getSubscriptionHistory,
     checkSubscriptionStatus
 } from '../controllers/subscription/subscription.controller';
 import {
     verifySubscriptionSchema,
     cancelSubscriptionSchema,
-    webhookSchema,
+    appleWebhookSchema,
+    googleWebhookSchema,
     subscriptionStatusSchema
 } from '../validations/subscription.schema';
 
@@ -48,9 +50,14 @@ router.post('/cancel/:subscriptionId',
 );
 
 // Webhook endpoint (no authentication required as it will be called by Google/Apple)
-router.post('/webhook',
-    validate(webhookSchema),
-    handleSubscriptionWebhook
+router.post('/webhook/apple',
+    validate(appleWebhookSchema),
+    handleSubscriptionWebhookApple
+);
+
+router.post('/webhook/google',
+    validate(googleWebhookSchema),
+    handleSubscriptionWebhookGoogle
 );
 
 export default router;

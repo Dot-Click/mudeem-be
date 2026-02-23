@@ -16,5 +16,6 @@ router.get('/status', auth_middleware_1.isAuthenticated, (0, validate_middleware
 router.get('/history', auth_middleware_1.isAuthenticated, subscription_controller_1.getSubscriptionHistory);
 router.post('/cancel/:subscriptionId', auth_middleware_1.isAuthenticated, (0, validate_middleware_1.validate)(subscription_schema_1.cancelSubscriptionSchema), subscription_controller_1.cancelSubscription);
 // Webhook endpoint (no authentication required as it will be called by Google/Apple)
-router.post('/webhook', (0, validate_middleware_1.validate)(subscription_schema_1.webhookSchema), subscription_controller_1.handleSubscriptionWebhook);
+router.post('/webhook/apple', (0, validate_middleware_1.validate)(subscription_schema_1.appleWebhookSchema), subscription_controller_1.handleSubscriptionWebhookApple);
+router.post('/webhook/google', (0, validate_middleware_1.validate)(subscription_schema_1.googleWebhookSchema), subscription_controller_1.handleSubscriptionWebhookGoogle);
 exports.default = router;

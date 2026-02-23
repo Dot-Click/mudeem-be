@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getSubscriptionHistory = exports.checkSubscriptionStatus = exports.handleSubscriptionWebhook = exports.cancelSubscription = exports.getUserSubscriptions = exports.verifySubscription = void 0;
+exports.getSubscriptionHistory = exports.checkSubscriptionStatus = exports.handleSubscriptionWebhookGoogle = exports.handleSubscriptionWebhookApple = exports.cancelSubscription = exports.getUserSubscriptions = exports.verifySubscription = void 0;
 const errorHandler_1 = __importDefault(require("../../utils/errorHandler"));
 const successHandler_1 = __importDefault(require("../../utils/successHandler"));
 const subscription_model_1 = __importDefault(require("../../models/user/subscription.model"));
@@ -212,52 +212,78 @@ const cancelSubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.cancelSubscription = cancelSubscription;
-// Webhook handler for subscription updates
-const handleSubscriptionWebhook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+// Webhook handler for Apple App Store Server Notifications V2
+const handleSubscriptionWebhookApple = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
-        const { platform, event, subscriptionId, data } = req.body;
-        // Verify webhook signature based on platform
-        // This is a placeholder - implement proper signature verification
-        const isValidWebhook = true; // TODO: Implement proper verification
-        if (!isValidWebhook) {
+        const { signedPayload } = req.body;
+        if (!signedPayload) {
             return (0, errorHandler_1.default)({
-                message: 'Invalid webhook signature',
-                statusCode: 401,
+                message: 'Missing signedPayload',
+                statusCode: 400,
                 req,
                 res
+            });
+        }
+        // Decode JWS payload (header.payload.signature)
+        const parts = signedPayload.split('.');
+        if (parts.length !== 3) {
+            return (0, errorHandler_1.default)({
+                message: 'Invalid JWS format',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
+        const payloadBuffer = Buffer.from(parts[1], 'base64');
+        const payload = JSON.parse(payloadBuffer.toString('utf-8'));
+        // For production, you MUST verify the signature of the JWS using Apple's public keys.
+        // This implementation trusts the decoded payload as-is.
+        const notificationType = payload.notificationType;
+        const signedTransactionInfo = (_a = payload.data) === null || _a === void 0 ? void 0 : _a.signedTransactionInfo;
+        let transactionInfo = {};
+        if (signedTransactionInfo) {
+            const txParts = signedTransactionInfo.split('.');
+            if (txParts.length === 3) {
+                transactionInfo = JSON.parse(Buffer.from(txParts[1], 'base64').toString('utf-8'));
+            }
+        }
+        const subscriptionId = transactionInfo.originalTransactionId || transactionInfo.transactionId;
+        if (!subscriptionId) {
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Ignored webhook without transaction info' },
+                statusCode: 200
             });
         }
         const subscription = yield subscription_model_1.default.findOne({
-            platformSubscriptionId: subscriptionId
+            platformSubscriptionId: subscriptionId,
+            platform: 'apple_store'
         });
         if (!subscription) {
-            return (0, errorHandler_1.default)({
-                message: 'Subscription not found',
-                statusCode: 404,
-                req,
-                res
+            // It's possible to receive notifications before our backend is aware of the purchase.
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Subscription not found in DB' },
+                statusCode: 200
             });
         }
-        // Handle different webhook events
-        switch (event) {
-            case 'subscription_renewed':
-                subscription.status = 'active';
-                subscription.endDate = new Date(data.newExpiryDate);
-                break;
-            case 'subscription_cancelled':
-                subscription.status = 'cancelled';
-                subscription.autoRenew = false;
-                break;
-            case 'subscription_expired':
-                subscription.status = 'expired';
-                break;
-            default:
-                return (0, errorHandler_1.default)({
-                    message: 'Unsupported event type',
-                    statusCode: 400,
-                    req,
-                    res
-                });
+        // Handle different Apple webhook events
+        const activeTypes = ['SUBSCRIBED', 'DID_RENEW', 'TEST'];
+        const expiredTypes = ['EXPIRED', 'DID_FAIL_TO_RENEW', 'REVOKED'];
+        if (activeTypes.includes(notificationType)) {
+            subscription.status = 'active';
+            if (transactionInfo.expiresDate) {
+                subscription.endDate = new Date(transactionInfo.expiresDate);
+            }
+            subscription.autoRenew = true;
+        }
+        else if (expiredTypes.includes(notificationType)) {
+            subscription.status = 'expired';
+            subscription.autoRenew = false;
+        }
+        else if (notificationType === 'DID_CHANGE_RENEWAL_STATUS') {
+            subscription.autoRenew = payload.subtype === 'AUTO_RENEW_ENABLED';
         }
         yield subscription.save();
         // Update user's subscription status based on type
@@ -272,7 +298,7 @@ const handleSubscriptionWebhook = (req, res) => __awaiter(void 0, void 0, void 0
         yield user_model_1.default.findByIdAndUpdate(subscription.user, updateData);
         return (0, successHandler_1.default)({
             res,
-            data: { message: 'Webhook processed successfully' },
+            data: { message: 'Apple Webhook processed successfully' },
             statusCode: 200
         });
     }
@@ -285,7 +311,96 @@ const handleSubscriptionWebhook = (req, res) => __awaiter(void 0, void 0, void 0
         });
     }
 });
-exports.handleSubscriptionWebhook = handleSubscriptionWebhook;
+exports.handleSubscriptionWebhookApple = handleSubscriptionWebhookApple;
+// Webhook handler for Google Play Real-Time Developer Notifications
+const handleSubscriptionWebhookGoogle = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { message } = req.body;
+        if (!message || !message.data) {
+            return (0, errorHandler_1.default)({
+                message: 'Invalid Google Pub/Sub message',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
+        // Decode Base64 data from Google Pub/Sub
+        const decodedData = Buffer.from(message.data, 'base64').toString('utf-8');
+        const notification = JSON.parse(decodedData);
+        if (!notification.subscriptionNotification) {
+            // Not a subscription notification (e.g. test notification)
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Ignored non-subscription notification' },
+                statusCode: 200
+            });
+        }
+        const subNotification = notification.subscriptionNotification;
+        const subscriptionId = subNotification.purchaseToken;
+        const notificationType = subNotification.notificationType;
+        const subscription = yield subscription_model_1.default.findOne({
+            platformSubscriptionId: subscriptionId,
+            platform: 'google_play'
+        });
+        if (!subscription) {
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Subscription not found in DB' },
+                statusCode: 200
+            });
+        }
+        // Notification types: https://developer.android.com/google/play/billing/rtdn-reference#sub
+        // 1: RECOVERED, 2: RENEWED, 3: CANCELED, 4: PURCHASED, 5: ACCOUNT_HOLD, 6: GRACE_PERIOD
+        // 7: RESTARTED, 9: DEFERRED, 12: REVOKED, 13: EXPIRED
+        switch (notificationType) {
+            case 1: // RECOVERED
+            case 2: // RENEWED
+            case 4: // PURCHASED
+            case 7: // RESTARTED
+                subscription.status = 'active';
+                subscription.autoRenew = true;
+                break;
+            case 3: // CANCELED
+                subscription.autoRenew = false;
+                // Note: It might still be active until the end of the billing period
+                break;
+            case 5: // ACCOUNT_HOLD
+            case 12: // REVOKED
+            case 13: // EXPIRED
+                subscription.status = 'expired';
+                subscription.autoRenew = false;
+                break;
+            default:
+                // Ignore other notifications without changing state
+                break;
+        }
+        yield subscription.save();
+        // Update user's subscription status based on type
+        const updateData = {};
+        const isActive = subscription.status === 'active';
+        if (subscription.type === 'sustainbuddy_gpt') {
+            updateData['subscriptions.sustainbuddyGPT'] = isActive;
+        }
+        else if (subscription.type === 'content_creator') {
+            updateData['subscriptions.contentCreator'] = isActive;
+        }
+        yield user_model_1.default.findByIdAndUpdate(subscription.user, updateData);
+        return (0, successHandler_1.default)({
+            res,
+            data: { message: 'Google Webhook processed successfully' },
+            statusCode: 200
+        });
+    }
+    catch (error) {
+        return (0, errorHandler_1.default)({
+            message: error.message,
+            statusCode: 500,
+            req,
+            res
+        });
+    }
+});
+exports.handleSubscriptionWebhookGoogle = handleSubscriptionWebhookGoogle;
 // Check subscription status for specific type
 const checkSubscriptionStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
