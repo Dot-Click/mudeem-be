@@ -17,8 +17,9 @@ const errorHandler_1 = __importDefault(require("../../utils/errorHandler"));
 const successHandler_1 = __importDefault(require("../../utils/successHandler"));
 const chat_model_1 = __importDefault(require("../../models/gpt/chat.model"));
 const openai_1 = require("../../utils/openai");
+const FALLBACK_BOT_MESSAGE = "I couldn't generate a response. Please try again.";
 const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
+    var _a, _b, _c, _d, _e, _f, _g;
     // #swagger.tags = ['gpt']
     try {
         if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.subscriptions.sustainbuddyGPT)) {
@@ -29,22 +30,33 @@ const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 res
             });
         }
+        const userMessage = String((_c = (_b = req.body.message) !== null && _b !== void 0 ? _b : req.body.content) !== null && _c !== void 0 ? _c : '').trim();
+        if (!userMessage) {
+            return (0, errorHandler_1.default)({
+                message: 'message or content is required',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
         const exChat = yield chat_model_1.default.findOne({
-            user: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id
+            user: (_d = req.user) === null || _d === void 0 ? void 0 : _d._id
         });
         if (!exChat) {
             const thread = yield (0, openai_1.createThread)();
-            const messageText = yield (0, openai_1.generateAiResponse)(thread, req.body.message, [
+            const messageText = yield (0, openai_1.generateAiResponse)(thread, userMessage, [
                 'environment',
                 'greenry'
             ]);
             const pattern = /【\d+:\d+†source】/g;
-            const response = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, ''); // remove source
-            let initialMessages = [];
-            initialMessages.push({ sender: 'user', content: req.body.message });
-            initialMessages.push({ sender: 'bot', content: response });
-            const chat = yield chat_model_1.default.create({
-                user: (_c = req.user) === null || _c === void 0 ? void 0 : _c._id,
+            const response = ((_e = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, '')) !== null && _e !== void 0 ? _e : '').trim() ||
+                FALLBACK_BOT_MESSAGE;
+            const initialMessages = [
+                { sender: 'user', content: userMessage },
+                { sender: 'bot', content: response }
+            ];
+            yield chat_model_1.default.create({
+                user: (_f = req.user) === null || _f === void 0 ? void 0 : _f._id,
                 messages: initialMessages,
                 thread
             });
@@ -54,22 +66,16 @@ const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 statusCode: 201
             });
         }
-        else {
-            // gpt prompt
-            const messageText = yield (0, openai_1.generateAiResponse)(exChat.thread, req.body.message, ['environment', 'greenry']);
-            const pattern = /【\d+:\d+†source】/g;
-            const response = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, ''); // remove source
-            //@ts-ignore
-            exChat.messages.push({ sender: 'user', content: req.body.message });
-            //@ts-ignore
-            exChat.messages.push({ sender: 'bot', content: response });
-            yield exChat.save();
-            return (0, successHandler_1.default)({
-                res,
-                data: { chat: response },
-                statusCode: 200
-            });
-        }
+        const messageText = yield (0, openai_1.generateAiResponse)(exChat.thread, userMessage, ['environment', 'greenry']);
+        const pattern = /【\d+:\d+†source】/g;
+        const response = ((_g = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, '')) !== null && _g !== void 0 ? _g : '').trim() || FALLBACK_BOT_MESSAGE;
+        exChat.messages.push({ sender: 'user', content: userMessage }, { sender: 'bot', content: response });
+        yield exChat.save();
+        return (0, successHandler_1.default)({
+            res,
+            data: { chat: response },
+            statusCode: 200
+        });
     }
     catch (error) {
         return (0, errorHandler_1.default)({

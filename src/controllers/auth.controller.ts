@@ -375,18 +375,19 @@ const logout: RequestHandler = async (req, res) => {
   }
 };
 
-//forgot password
+//forgot password — always return same message (don't leak "user does not exist")
 const forgotPassword: RequestHandler = async (req, res) => {
   // #swagger.tags = ['auth']
+  const genericMessage =
+    'If an account exists with this email, you will receive a password reset link.';
 
   try {
     const { email } = req.body as authTypes.RequestEmailTokenBody;
     const user: IUser | null = await findUserByEmail(email ?? '');
     if (!user) {
-      return ErrorHandler({
-        message: 'User does not exist',
-        statusCode: 400,
-        req,
+      return SuccessHandler({
+        data: genericMessage,
+        statusCode: 200,
         res
       });
     }
@@ -401,9 +402,9 @@ const forgotPassword: RequestHandler = async (req, res) => {
     await user.save();
     const message: string = `Your password reset token is ${passwordResetToken} and it expires in 10 minutes`;
     const subject: string = `Password reset token`;
-    await SendMail({ email, subject, text: message });
+    await SendMail({ email: user.email, subject, text: message });
     return SuccessHandler({
-      data: `Password reset token sent to ${email}`,
+      data: genericMessage,
       statusCode: 200,
       res
     });

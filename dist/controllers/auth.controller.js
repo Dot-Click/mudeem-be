@@ -377,17 +377,17 @@ const logout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.logout = logout;
-//forgot password
+//forgot password — always return same message (don't leak "user does not exist")
 const forgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // #swagger.tags = ['auth']
+    const genericMessage = 'If an account exists with this email, you will receive a password reset link.';
     try {
         const { email } = req.body;
         const user = yield findUserByEmail(email !== null && email !== void 0 ? email : '');
         if (!user) {
-            return (0, errorHandler_1.default)({
-                message: 'User does not exist',
-                statusCode: 400,
-                req,
+            return (0, successHandler_1.default)({
+                data: genericMessage,
+                statusCode: 200,
                 res
             });
         }
@@ -398,9 +398,9 @@ const forgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function*
         yield user.save();
         const message = `Your password reset token is ${passwordResetToken} and it expires in 10 minutes`;
         const subject = `Password reset token`;
-        yield (0, sendMail_1.default)({ email, subject, text: message });
+        yield (0, sendMail_1.default)({ email: user.email, subject, text: message });
         return (0, successHandler_1.default)({
-            data: `Password reset token sent to ${email}`,
+            data: genericMessage,
             statusCode: 200,
             res
         });
