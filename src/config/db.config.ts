@@ -7,6 +7,7 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
       retryWrites: true,
       retryReads: true,
+      family: 4, // Force IPv4
     });
     console.log('DB connected: ' + mongoose.connection.host);
   } catch (error) {

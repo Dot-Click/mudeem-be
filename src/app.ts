@@ -56,6 +56,7 @@ app.use(
         tlsAllowInvalidHostnames: true,
         serverSelectionTimeoutMS: 30000,
         socketTimeoutMS: 45000,
+        family: 4, // Force IPv4
       }
     }),
     cookie: cookieOptions

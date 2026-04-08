@@ -20,6 +20,7 @@ const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
             socketTimeoutMS: 45000,
             retryWrites: true,
             retryReads: true,
+            family: 4, // Force IPv4
         });
         console.log('DB connected: ' + mongoose_1.default.connection.host);
     }
