@@ -5,13 +5,13 @@ const connectDB = async () => {
     await mongoose.connect(process.env.MONGO_URI!, {
       serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
       retryWrites: true,
       retryReads: true,
-      family: 4, // Force IPv4
     });
     console.log('DB connected: ' + mongoose.connection.host);
   } catch (error) {
-    console.log('Error connecting database: ' + error);
+    console.error('Error connecting to database:', error);
     process.exit(1);
   }
 };

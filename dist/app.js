@@ -54,7 +54,7 @@ app.use((0, express_session_1.default)({
             tlsAllowInvalidHostnames: true,
             serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
-            family: 4, // Force IPv4
+            connectTimeoutMS: 30000,
         }
     }),
     cookie: cookieOptions
