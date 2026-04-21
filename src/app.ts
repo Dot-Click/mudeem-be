@@ -24,6 +24,8 @@ const allowedOrigins = [
   'http://localhost:5173',
   'https://mudeem-admin-panel.vercel.app',
   'https://www.mudeem-admin-panel.vercel.app',
+  'https://mudeem-admin-panel-production.up.railway.app/',
+  'https://mudeem-admin-panel-production.up.railway.app/api',
   // ADD THIS LINE:
   'https://mudeem-admin-panel-production.up.railway.app',
   // Also add your custom domain if you have one linked:
