@@ -22,8 +22,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'http://127.0.0.1:3000', // Sometimes browsers use the IP instead of localhost
   'https://mudeem-admin-panel.vercel.app',
-  'https://www.mudeem-admin-panel.vercel.app'
+  'https://api.mudeem.ae' // Add your API domain itself if it makes requests to itself
 ];
 
 if (isProduction) {
