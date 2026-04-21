@@ -22,15 +22,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'http://localhost:8081', // Mobile often uses this
   'https://mudeem-admin-panel.vercel.app',
   'https://www.mudeem-admin-panel.vercel.app',
-  'https://mudeem-admin-panel-production.up.railway.app/',
-  'https://mudeem-admin-panel-production.up.railway.app/api',
-  // ADD THIS LINE:
   'https://mudeem-admin-panel-production.up.railway.app',
-  // Also add your custom domain if you have one linked:
   'https://api.mudeem.ae'
 ];
+
 if (isProduction) {
   app.set('trust proxy', 1); // Required for secure cookies behind proxies like Vercel/Nginx
 }
@@ -40,25 +38,16 @@ const cookieOptions: CookieOptions = {
   httpOnly: true,
   secure: true, // MUST be true for cross-site
   sameSite: 'none' // MUST be 'none' for cross-site
-  // Remove the 'domain' property or set it carefully
 };
+
 // --- 2. GLOBAL MIDDLEWARES (Order is crucial) ---
 
 // CORS must be handled first, especially for pre-flight (OPTIONS)
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps)
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: allowedOrigins,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
     credentials: true
   })
 );
