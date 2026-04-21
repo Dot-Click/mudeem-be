@@ -43,12 +43,14 @@ const cookieOptions: CookieOptions = {
 // --- 2. GLOBAL MIDDLEWARES (Order is crucial) ---
 
 // CORS must be handled first, especially for pre-flight (OPTIONS)
+// Set to always return true for origin to "bypass" CORS restrictions while supporting credentials
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => callback(null, true),
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
-    credentials: true
+    credentials: true,
+    optionsSuccessStatus: 200
   })
 );
 
@@ -118,6 +120,17 @@ app.get('/', (req: Request, res: Response): void => {
 // 404 Catch-all
 app.use((req: Request, res: Response, next: NextFunction): void => {
   next(new ApiError(404, 'Not found'));
+});
+
+// Global Error Handler (Ensures CORS headers are preserved and errors are returned as JSON)
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(statusCode).json({
+    success: false,
+    message: message
+  });
 });
 
 export default app;
