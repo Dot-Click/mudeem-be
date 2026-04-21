@@ -19,6 +19,7 @@ const company_model_1 = __importDefault(require("../../models/waste/company.mode
 const request_model_1 = __importDefault(require("../../models/waste/request.model"));
 const user_model_1 = __importDefault(require("../../models/user/user.model"));
 const firebase_1 = require("../../utils/firebase");
+const mongoose_1 = __importDefault(require("mongoose"));
 const createCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // #swagger.tags = ['waste']
     try {
@@ -83,9 +84,35 @@ const deleteCompany = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 });
 exports.deleteCompany = deleteCompany;
 const createRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     // #swagger.tags = ['waste']
     try {
-        const { wasteType, quantity, description, address1, address2, pickupDateTime, user, company } = req.body;
+        const { wasteType, quantity, description, address1, address2, pickupDateTime, company } = req.body;
+        const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
+        if (!userId) {
+            return (0, errorHandler_1.default)({
+                message: 'Not logged in',
+                statusCode: 401,
+                req,
+                res
+            });
+        }
+        if (!mongoose_1.default.Types.ObjectId.isValid(String(userId))) {
+            return (0, errorHandler_1.default)({
+                message: 'Invalid user id',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
+        if (!company || !mongoose_1.default.Types.ObjectId.isValid(String(company))) {
+            return (0, errorHandler_1.default)({
+                message: 'Invalid company id',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
         const request = yield request_model_1.default.create({
             wasteType,
             quantity,
@@ -93,7 +120,7 @@ const createRequest = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             address1,
             address2,
             pickupDateTime,
-            user,
+            user: userId,
             company
         });
         return (0, successHandler_1.default)({

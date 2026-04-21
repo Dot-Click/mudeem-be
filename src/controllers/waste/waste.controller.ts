@@ -5,6 +5,7 @@ import Company from '../../models/waste/company.model';
 import Waste from '../../models/waste/request.model';
 import User from '../../models/user/user.model';
 import { sentPushNotification } from '../../utils/firebase';
+import mongoose from 'mongoose';
 
 const createCompany: RequestHandler = async (req, res) => {
   // #swagger.tags = ['waste']
@@ -75,9 +76,35 @@ const createRequest: RequestHandler = async (req, res) => {
       address1,
       address2,
       pickupDateTime,
-      user,
       company
     } = req.body;
+
+    const userId = req.user?._id;
+    if (!userId) {
+      return ErrorHandler({
+        message: 'Not logged in',
+        statusCode: 401,
+        req,
+        res
+      });
+    }
+    if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+      return ErrorHandler({
+        message: 'Invalid user id',
+        statusCode: 400,
+        req,
+        res
+      });
+    }
+    if (!company || !mongoose.Types.ObjectId.isValid(String(company))) {
+      return ErrorHandler({
+        message: 'Invalid company id',
+        statusCode: 400,
+        req,
+        res
+      });
+    }
+
     const request = await Waste.create({
       wasteType,
       quantity,
@@ -85,7 +112,7 @@ const createRequest: RequestHandler = async (req, res) => {
       address1,
       address2,
       pickupDateTime,
-      user,
+      user: userId,
       company
     });
     return SuccessHandler({

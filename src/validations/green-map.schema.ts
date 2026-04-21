@@ -28,11 +28,12 @@ const createGreenMapPoint = Joi.object({
       'object.base': 'Coordinates must be an object with lat and lng'
     }),
   category: Joi.string()
-    .valid('green space', 'ef building', 'recycling bin')
+    // Accept common client variants; backend will normalize if needed.
+    .valid('green space', 'ef building', 'recycling bin', 'recycle bin')
     .required()
     .messages({
       'any.only':
-        'category must be of the followings green space , ef building ,recyling bins'
+        'category must be one of: green space, ef building, recycling bin'
     })
 });
 

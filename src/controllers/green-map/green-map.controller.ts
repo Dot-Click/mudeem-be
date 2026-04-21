@@ -17,11 +17,14 @@ const createGreenMap: RequestHandler = async (req, res) => {
       greenPointsPerTime
       // timeLimit
     } = req.body;
+
+    const normalizedCategory =
+      category === 'recycle bin' ? 'recycling bin' : category;
     const greenMap = await GreenMap.create({
       description,
       location,
       coordinates,
-      category,
+      category: normalizedCategory,
       greenPointsPerTime
       // timeLimit
     });

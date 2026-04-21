@@ -25,11 +25,12 @@ const createGreenMap = (req, res) => __awaiter(void 0, void 0, void 0, function*
         const { description, location, coordinates, category, greenPointsPerTime
         // timeLimit
          } = req.body;
+        const normalizedCategory = category === 'recycle bin' ? 'recycling bin' : category;
         const greenMap = yield green_map_model_1.default.create({
             description,
             location,
             coordinates,
-            category,
+            category: normalizedCategory,
             greenPointsPerTime
             // timeLimit
         });

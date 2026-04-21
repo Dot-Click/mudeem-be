@@ -14,18 +14,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = () => __awaiter(void 0, void 0, void 0, function* () {
+    const uri = process.env.MONGO_URI;
+    if (!uri) {
+        console.error('MONGO_URI is not defined in environment variables');
+        process.exit(1);
+    }
     try {
-        yield mongoose_1.default.connect(process.env.MONGO_URI, {
+        // Log the cluster name for verification (masking credentials)
+        const clusterName = uri.split('@')[1] || 'unknown cluster';
+        console.log(`Attempting to connect to MongoDB: ${clusterName.split('/')[0]}`);
+        yield mongoose_1.default.connect(uri, {
             serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
             connectTimeoutMS: 30000,
             retryWrites: true,
             retryReads: true,
+            autoIndex: true,
         });
-        console.log('DB connected: ' + mongoose_1.default.connection.host);
+        console.log('DB connected successfully: ' + mongoose_1.default.connection.host);
     }
     catch (error) {
-        console.error('Error connecting to database:', error);
+        console.error('CRITICAL: Database connection failed.');
+        console.error('Error details:', error);
         process.exit(1);
     }
 });
