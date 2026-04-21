@@ -36,7 +36,7 @@ const router = express_1.default.Router();
 router
     .route('/')
     .post(auth_middleware_1.isAuthenticated, multer_middleware_1.default.array('images', 5), (0, validate_middleware_1.validate)(schema.createUpdatePost), collabForumController.createPost)
-    .get(collabForumController.getAllPosts);
+    .get(auth_middleware_1.isAuthenticated, collabForumController.getAllPosts);
 router
     .route('/:id')
     .get(collabForumController.getPost)

@@ -16,7 +16,7 @@ router
     validate(schema.createUpdatePost),
     collabForumController.createPost
   )
-  .get(collabForumController.getAllPosts);
+  .get(isAuthenticated, collabForumController.getAllPosts);
 
 router
   .route('/:id')

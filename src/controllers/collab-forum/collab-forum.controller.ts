@@ -70,11 +70,24 @@ const getAllPosts: RequestHandler = async (req, res) => {
 
     let query = {};
     if (type === 'me') {
+      if (!req.user?._id) {
+        return ErrorHandler({
+          message: 'Not logged in',
+          statusCode: 401,
+          req,
+          res
+        });
+      }
       if (req.user?.role !== 'admin') {
-        const userId = new mongoose.Types.ObjectId(req.user?._id);
+        const userId = new mongoose.Types.ObjectId(req.user._id);
         query = {
           user: userId,
           status: 'accepted'
+        };
+      } else {
+        // For admins, default to requested (or provided status) instead of returning everything.
+        query = {
+          status: String(status)
         };
       }
     } else if (type === 'others') {
@@ -122,7 +135,7 @@ const getAllPosts: RequestHandler = async (req, res) => {
               $skip: Number(skip)
             },
             {
-              $limit: 8
+              $limit: Number(limit)
             }
           ]
         }

@@ -79,11 +79,25 @@ const getAllPosts = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         const skip = Number(page) * Number(limit);
         let query = {};
         if (type === 'me') {
-            if (((_a = req.user) === null || _a === void 0 ? void 0 : _a.role) !== 'admin') {
-                const userId = new mongoose_1.default.Types.ObjectId((_b = req.user) === null || _b === void 0 ? void 0 : _b._id);
+            if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a._id)) {
+                return (0, errorHandler_1.default)({
+                    message: 'Not logged in',
+                    statusCode: 401,
+                    req,
+                    res
+                });
+            }
+            if (((_b = req.user) === null || _b === void 0 ? void 0 : _b.role) !== 'admin') {
+                const userId = new mongoose_1.default.Types.ObjectId(req.user._id);
                 query = {
                     user: userId,
                     status: 'accepted'
+                };
+            }
+            else {
+                // For admins, default to requested (or provided status) instead of returning everything.
+                query = {
+                    status: String(status)
                 };
             }
         }
@@ -133,7 +147,7 @@ const getAllPosts = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                             $skip: Number(skip)
                         },
                         {
-                            $limit: 8
+                            $limit: Number(limit)
                         }
                     ]
                 }
