@@ -22,11 +22,13 @@ const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
-  'http://127.0.0.1:3000', // Sometimes browsers use the IP instead of localhost
   'https://mudeem-admin-panel.vercel.app',
-  'https://api.mudeem.ae' // Add your API domain itself if it makes requests to itself
+  'https://www.mudeem-admin-panel.vercel.app',
+  // ADD THIS LINE:
+  'https://mudeem-admin-panel-production.up.railway.app',
+  // Also add your custom domain if you have one linked:
+  'https://api.mudeem.ae'
 ];
-
 if (isProduction) {
   app.set('trust proxy', 1); // Required for secure cookies behind proxies like Vercel/Nginx
 }
