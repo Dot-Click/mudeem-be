@@ -34,12 +34,12 @@ if (isProduction) {
 }
 
 const cookieOptions: CookieOptions = {
-  maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+  maxAge: 1000 * 60 * 60 * 24 * 7,
   httpOnly: true,
-  secure: isProduction, // true in production
-  sameSite: isProduction ? 'none' : 'lax' // 'none' is mandatory for cross-site cookies (CORS + Cookies)
+  secure: true, // MUST be true for cross-site
+  sameSite: 'none' // MUST be 'none' for cross-site
+  // Remove the 'domain' property or set it carefully
 };
-
 // --- 2. GLOBAL MIDDLEWARES (Order is crucial) ---
 
 // CORS must be handled first, especially for pre-flight (OPTIONS)
@@ -73,6 +73,7 @@ app.use(
   session({
     secret: process.env.SESSION_SECRET || 'secret',
     resave: false,
+    proxy: true, // Add this to tell express-session to trust the Railway proxy
     saveUninitialized: false,
     store: MongoStore.create({
       mongoUrl: process.env.MONGO_URI,
