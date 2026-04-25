@@ -13,42 +13,43 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import { captureLastActive } from './middleware/userAgent.middleware';
 import { CookieOptions } from 'express-session';
+import mongoose from 'mongoose';
 
 const app = express();
 
 // --- 1. SETTINGS & CONSTANTS ---
 const isProduction = process.env.NODE_ENV === 'production';
 
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'http://localhost:8081', // Mobile often uses this
-  'https://mudeem-admin-panel.vercel.app',
-  'https://www.mudeem-admin-panel.vercel.app',
-  'https://mudeem-admin-panel-production.up.railway.app',
-  'https://api.mudeem.ae'
-];
+if (!process.env.MONGO_URI) {
+  console.error('ERROR: MONGO_URI is not defined in environment variables!');
+}
 
-if (isProduction) {
-  app.set('trust proxy', 1); // Required for secure cookies behind proxies like Vercel/Nginx
+// In Railway/Production, we must trust the proxy for secure cookies to work
+if (isProduction || process.env.RAILWAY_STATIC_URL) {
+  app.set('trust proxy', 1);
 }
 
 const cookieOptions: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 7,
   httpOnly: true,
-  secure: true, // MUST be true for cross-site
-  sameSite: 'none' // MUST be 'none' for cross-site
+  // If we are on localhost, we don't need secure/none usually, 
+  // but if we are hitting a remote backend, we DO.
+  // We'll stick to secure/none as it's required for cross-domain cookies.
+  secure: true,
+  sameSite: 'none'
 };
 
 // --- 2. GLOBAL MIDDLEWARES (Order is crucial) ---
 
 // CORS must be handled first, especially for pre-flight (OPTIONS)
-// Set to always return true for origin to "bypass" CORS restrictions while supporting credentials
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, true),
+    origin: (origin, callback) => {
+      // Allow any origin for debugging, while still supporting credentials
+      return callback(null, true);
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'X-CSRF-Token'],
     credentials: true,
     optionsSuccessStatus: 200
   })
@@ -64,20 +65,16 @@ app.use(loggerMiddleware);
 // Session Management
 app.use(
   session({
-    secret: process.env.SESSION_SECRET || 'secret',
+    secret: process.env.SESSION_SECRET || 'strong-secret-key',
     resave: false,
-    proxy: true, // Add this to tell express-session to trust the Railway proxy
+    proxy: true,
     saveUninitialized: false,
     store: MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
+      mongoUrl: process.env.MONGO_URI || 'mongodb://localhost:27017/mudeem', // Fallback to local to prevent crash
       stringify: false,
       mongoOptions: {
-        tls: true,
-        tlsAllowInvalidCertificates: isProduction ? false : true,
-        tlsAllowInvalidHostnames: isProduction ? false : true,
-        serverSelectionTimeoutMS: 30000,
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: 30000
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 10000
       }
     }),
     cookie: cookieOptions
@@ -112,7 +109,17 @@ app.use('/', router);
 
 // Default Route
 app.get('/', (req: Request, res: Response): void => {
-  res.send('BE-boilerplate v1.1');
+  res.send('BE-boilerplate v1.1 - Up and Running');
+});
+
+// Health Check Route
+app.get('/health', (_req: Request, res: Response): void => {
+  const dbStatus = mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected';
+  res.status(200).json({
+    status: 'UP',
+    database: dbStatus,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // --- 5. ERROR HANDLING ---
@@ -126,7 +133,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
-  
+
   res.status(statusCode).json({
     success: false,
     message: message
