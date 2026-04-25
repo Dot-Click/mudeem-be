@@ -1,4 +1,4 @@
-import nodemailer, { Transporter, SendMailOptions } from 'nodemailer';
+import axios from 'axios';
 import { SendMailParams } from '../types/generalTypes';
 
 const SendMail = async ({
@@ -6,38 +6,43 @@ const SendMail = async ({
   subject,
   text
 }: SendMailParams): Promise<void> => {
-  const host = process.env.BREVO_HOST || 'smtp-relay.brevo.com';
-  const port = parseInt(process.env.BREVO_PORT || '587');
-  const user = process.env.BREVO_USER || 'a92c24001@smtp-brevo.com';
-  const pass = process.env.Brevo_SMTPKEY;
+  const apiKey = process.env.NODEMAILER_API_KEY;
   const fromEmail = process.env.BREVO_SENDER_EMAIL || 'mudeemsustainapp@gmail.com';
 
-  if (!pass) {
+  if (!apiKey) {
     console.error('Email error: NODEMAILER_API_KEY is not defined');
     throw new Error('Email configuration missing');
   }
 
   try {
-    const transport: Transporter = nodemailer.createTransport({
-      host,
-      port,
-      auth: {
-        user,
-        pass
+    const response = await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: { email: fromEmail, name: 'Mudeem Sustain' },
+        to: [{ email: email }],
+        subject: subject,
+        textContent: text
+      },
+      {
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
       }
-    });
+    );
 
-    const mailOptions: SendMailOptions = {
-      from: fromEmail,
-      to: email,
-      subject,
-      text
-    };
-
-    const info = await transport.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-  } catch (error) {
-    console.error('Email sending failed:', error);
+    console.log('Email sent successfully via API:', response.data.messageId);
+  } catch (error: any) {
+    if (error.response) {
+      console.error('Brevo API error:', error.response.data);
+      // provide a clearer error message for activation issues
+      const errorMessage = error.response.data.message || '';
+      if (error.response.data.code === 'unauthorized' || errorMessage.includes('activated')) {
+        throw new Error('Brevo SMTP/API account is not activated. Please check your Brevo dashboard or contact support.');
+      }
+      throw new Error(errorMessage || 'Failed to send email via Brevo API');
+    }
+    console.error('Email sending failed (Network/Timeout):', error.message);
     throw error;
   }
 };
