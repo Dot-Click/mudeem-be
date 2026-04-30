@@ -130,7 +130,7 @@ app.use((req: Request, res: Response, next: NextFunction): void => {
 });
 
 // Global Error Handler (Ensures CORS headers are preserved and errors are returned as JSON)
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
