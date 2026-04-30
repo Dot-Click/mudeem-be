@@ -12,7 +12,7 @@ const SendMail = async ({
 
   try {
     const { data, error } = await resend.emails.send({
-      from: `Mudeem Sustain <${fromEmail}>`,
+      from: fromEmail,
       to: [email],
       subject: subject,
       text: text,
