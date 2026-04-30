@@ -8,38 +8,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-const nodemailer_1 = __importDefault(require("nodemailer"));
-const { createTransport } = nodemailer_1.default;
+const resend_1 = require("resend");
+const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
 const SendMail = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, subject, text }) {
+    const fromEmail = process.env.RESEND_SENDER_EMAIL || 'no-reply@email.mudeem.ae';
     try {
-        const transport = createTransport(
-        // nodemailerSendgrid({
-        //   apiKey: process.env.NODEMAILER_API_KEY as string
-        // })
-        // smtp transport
-        {
-            host: 'smtp-relay.brevo.com',
-            port: 587,
-            // secure: false,
-            auth: {
-                user: '83cabe001@smtp-brevo.com',
-                pass: 'KmMhxqWg5HwUEv0B'
-            }
+        const { data, error } = yield resend.emails.send({
+            from: fromEmail,
+            to: [email],
+            subject: subject,
+            text: text,
         });
-        const mailOptions = {
-            from: 'mudeemsustainapp@gmail.com',
-            to: email,
-            subject,
-            text
-        };
-        yield transport.sendMail(mailOptions);
+        if (error) {
+            console.error('Email sending failed (Resend error):', error.message);
+            throw error;
+        }
+        console.log('Email sent successfully via Resend SDK:', data === null || data === void 0 ? void 0 : data.id);
     }
     catch (error) {
-        console.error(error);
+        console.error('Email sending failed:', error.message);
+        throw error;
     }
 });
 exports.default = SendMail;
