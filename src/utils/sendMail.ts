@@ -8,7 +8,10 @@ const SendMail = async ({
   subject,
   text
 }: SendMailParams): Promise<void> => {
-  const fromEmail = process.env.RESEND_SENDER_EMAIL || 'no-reply@email.mudeem.ae';
+  let fromEmail = process.env.RESEND_SENDER_EMAIL || 'no-reply@email.mudeem.ae';
+  if (!fromEmail.includes('@')) {
+    fromEmail = `no-reply@${fromEmail}`;
+  }
 
   try {
     const { data, error } = await resend.emails.send({
