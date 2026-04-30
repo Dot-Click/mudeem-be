@@ -6,7 +6,7 @@ FE_URL=""
 MONGO_URI=mongodb+srv://mudeem:mudeem@cluster0.pxduhdd.mongodb.net/mudeem
 NODE_ENV=""
 RESEND_API_KEY=""
-RESEND_SENDER_EMAIL=""
+RESEND_SENDER_EMAIL="no-reply@email.mudeem.ae"
 OPENAI_API_KEY=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
 PORT=8001
 
