@@ -11,6 +11,10 @@ import {
     checkSubscriptionStatus
 } from '../controllers/subscription/subscription.controller';
 import {
+    handleRevenueCatWebhook,
+    syncRevenueCatSubscription
+} from '../controllers/subscription/revenuecat.controller';
+import {
     verifySubscriptionSchema,
     cancelSubscriptionSchema,
     appleWebhookSchema,
@@ -58,6 +62,17 @@ router.post('/webhook/apple',
 router.post('/webhook/google',
     validate(googleWebhookSchema),
     handleSubscriptionWebhookGoogle
+);
+
+// RevenueCat Webhook
+router.post('/webhook/revenuecat',
+    handleRevenueCatWebhook
+);
+
+// Manual sync with RevenueCat
+router.post('/sync',
+    isAuthenticated,
+    syncRevenueCatSubscription
 );
 
 export default router;

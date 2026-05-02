@@ -3,7 +3,7 @@ import mongoose, { Document } from 'mongoose';
 export interface ISubscription extends Document {
     user: mongoose.Types.ObjectId;
     type: 'sustainbuddy_gpt' | 'content_creator';
-    platform: 'google_play' | 'apple_store';
+    platform: 'google_play' | 'apple_store' | 'revenue_cat';
     status: 'active' | 'cancelled' | 'expired' | 'pending';
     startDate: Date;
     endDate: Date;

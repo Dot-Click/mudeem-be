@@ -3,10 +3,10 @@ import Joi from 'joi';
 // Validation schema for subscription verification
 export const verifySubscriptionSchema = Joi.object({
     platform: Joi.string()
-        .valid('google_play', 'apple_store')
+        .valid('google_play', 'apple_store', 'revenue_cat')
         .required()
         .messages({
-            'any.only': 'Platform must be either google_play or apple_store',
+            'any.only': 'Platform must be one of: google_play, apple_store, revenue_cat',
             'any.required': 'Platform is required'
         }),
     receipt: Joi.string()

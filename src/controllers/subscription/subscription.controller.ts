@@ -5,6 +5,7 @@ import Subscription from '../../models/user/subscription.model';
 import User from '../../models/user/user.model';
 import { verifyGooglePlaySubscription } from '../../utils/googlePlay';
 import { verifyAppleSubscription } from '../../utils/appleStore';
+import { getRevenueCatUserStatus } from '../../utils/revenueCat';
 import { ISubscription } from '../../types/models/user';
 
 interface SubscriptionStatus {
@@ -50,6 +51,18 @@ const verifySubscription: RequestHandler = async (req, res) => {
             verificationResult = await verifyGooglePlaySubscription(receipt);
         } else if (platform === 'apple_store') {
             verificationResult = await verifyAppleSubscription(receipt);
+        } else if (platform === 'revenue_cat') {
+            const { activeSubscriptions } = await getRevenueCatUserStatus(user._id.toString());
+            const activeSub = activeSubscriptions.find(s => s.type === type);
+            
+            verificationResult = {
+                isValid: !!activeSub,
+                status: activeSub ? 'active' : 'expired',
+                startDate: activeSub?.purchaseDate || new Date(),
+                endDate: activeSub?.expiresDate || new Date(),
+                subscriptionId: activeSub?.productId || 'rc_' + Date.now(),
+                autoRenew: true
+            };
         } else {
             return ErrorHandler({
                 message: 'Invalid platform',
