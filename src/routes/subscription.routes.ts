@@ -68,6 +68,9 @@ router.post('/webhook/google',
 router.post('/webhook/revenuecat',
     handleRevenueCatWebhook
 );
+router.post('/webhook',
+    handleRevenueCatWebhook
+);
 
 // Manual sync with RevenueCat
 router.post('/sync',

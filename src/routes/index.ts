@@ -40,5 +40,6 @@ router.use('/dashboard', dashboard);
 router.use('/user', user);
 router.use('/notification', notification);
 router.use('/subscription', subscription);
+router.use('/revenuecat', subscription); // Added to match https://api.mudeem.ae/revenuecat/webhook
 
 export default router;

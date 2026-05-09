@@ -20,8 +20,21 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
             });
         }
 
+        // Verify Webhook Secret (if configured)
+        const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+        const authHeader = req.headers.authorization;
+        if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+             console.warn('Unauthorized RevenueCat webhook attempt');
+             return ErrorHandler({
+                message: 'Unauthorized',
+                statusCode: 401,
+                req,
+                res
+            });
+        }
+
         const {
-            event_type,
+            type: eventType,
             app_user_id,
             original_transaction_id,
             expiration_at_ms,
@@ -72,9 +85,9 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
         // Events: INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION, BILLING_ISSUE, RESTORE, etc.
         let status: 'active' | 'cancelled' | 'expired' | 'pending' = 'active';
         
-        if (['EXPIRATION', 'BILLING_ISSUE', 'REVOKE'].includes(event_type)) {
+        if (['EXPIRATION', 'BILLING_ISSUE', 'REVOKE'].includes(eventType)) {
             status = 'expired';
-        } else if (event_type === 'CANCELLATION') {
+        } else if (eventType === 'CANCELLATION') {
             // Note: Cancellation in RevenueCat often means auto-renew was turned off, 
             // but the subscription might still be active until expiration_at_ms.
             // We'll check if the expiration date is in the future.
@@ -87,11 +100,11 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
             type,
             platform: 'revenue_cat',
             status,
-            startDate: new Date(purchased_at_ms),
-            endDate: new Date(expiration_at_ms),
+            startDate: purchased_at_ms ? new Date(purchased_at_ms) : new Date(),
+            endDate: expiration_at_ms ? new Date(expiration_at_ms) : new Date(),
             platformSubscriptionId: original_transaction_id,
             receiptData: event,
-            autoRenew: !['CANCELLATION', 'EXPIRATION', 'BILLING_ISSUE'].includes(event_type),
+            autoRenew: !['CANCELLATION', 'EXPIRATION', 'BILLING_ISSUE'].includes(eventType),
             lastVerifiedAt: new Date()
         };
 
