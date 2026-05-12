@@ -82,17 +82,39 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
         }
 
         // Map RevenueCat events to our internal status
-        // Events: INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION, BILLING_ISSUE, RESTORE, etc.
+        // Docs: https://www.revenuecat.com/docs/webhooks
         let status: 'active' | 'cancelled' | 'expired' | 'pending' = 'active';
+        let autoRenew = true;
         
-        if (['EXPIRATION', 'BILLING_ISSUE', 'REVOKE'].includes(eventType)) {
-            status = 'expired';
-        } else if (eventType === 'CANCELLATION') {
-            // Note: Cancellation in RevenueCat often means auto-renew was turned off, 
-            // but the subscription might still be active until expiration_at_ms.
-            // We'll check if the expiration date is in the future.
-            const isStillActive = expiration_at_ms && expiration_at_ms > Date.now();
-            status = isStillActive ? 'active' : 'expired';
+        const isStillActive = expiration_at_ms && expiration_at_ms > Date.now();
+
+        switch (eventType) {
+            case 'INITIAL_PURCHASE':
+            case 'RENEWAL':
+            case 'UNCANCELLATION':
+            case 'SUBSCRIPTION_RESUMED':
+                status = 'active';
+                autoRenew = true;
+                break;
+            case 'CANCELLATION':
+                // Cancellation in RC means auto-renew is OFF, but it might still be active until expiration
+                status = isStillActive ? 'active' : 'expired';
+                autoRenew = false;
+                break;
+            case 'EXPIRATION':
+            case 'BILLING_ISSUE':
+            case 'REVOKE':
+                status = 'expired';
+                autoRenew = false;
+                break;
+            case 'PRODUCT_CHANGE':
+                status = 'active';
+                autoRenew = true;
+                break;
+            default:
+                // For other events, maintain current status based on expiration
+                status = isStillActive ? 'active' : 'expired';
+                break;
         }
 
         const subscriptionData = {
@@ -104,7 +126,7 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
             endDate: expiration_at_ms ? new Date(expiration_at_ms) : new Date(),
             platformSubscriptionId: original_transaction_id,
             receiptData: event,
-            autoRenew: !['CANCELLATION', 'EXPIRATION', 'BILLING_ISSUE'].includes(eventType),
+            autoRenew,
             lastVerifiedAt: new Date()
         };
 
@@ -116,15 +138,17 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
 
         // Update user's subscription status in the User model
         const updateData: any = {};
-        const isActive = status === 'active';
+        const isEntitled = status === 'active';
 
         if (type === 'sustainbuddy_gpt') {
-            updateData['subscriptions.sustainbuddyGPT'] = isActive;
+            updateData['subscriptions.sustainbuddyGPT'] = isEntitled;
         } else if (type === 'content_creator') {
-            updateData['subscriptions.contentCreator'] = isActive;
+            updateData['subscriptions.contentCreator'] = isEntitled;
         }
 
         await User.findByIdAndUpdate(user._id, updateData);
+
+        console.log(`RevenueCat Webhook: Updated User ${user.email} to ${type}:${status}`);
 
         return SuccessHandler({
             res,
