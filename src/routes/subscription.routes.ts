@@ -25,9 +25,15 @@ import {
 const router = express.Router();
 
 // Protected routes (require authentication)
+router.post('/purchase',
+    isAuthenticated,
+    validate(verifySubscriptionSchema, 'body'),
+    verifySubscription
+);
+
 router.post('/verify',
     isAuthenticated,
-    validate(verifySubscriptionSchema),
+    validate(verifySubscriptionSchema, 'body'),
     verifySubscription
 );
 
@@ -38,7 +44,7 @@ router.get('/my-subscriptions',
 
 router.get('/status',
     isAuthenticated,
-    validate(subscriptionStatusSchema),
+    validate(subscriptionStatusSchema, 'query'),
     checkSubscriptionStatus
 );
 
@@ -49,18 +55,18 @@ router.get('/history',
 
 router.post('/cancel/:subscriptionId',
     isAuthenticated,
-    validate(cancelSubscriptionSchema),
+    validate(cancelSubscriptionSchema, 'params'),
     cancelSubscription
 );
 
 // Webhook endpoint (no authentication required as it will be called by Google/Apple)
 router.post('/webhook/apple',
-    validate(appleWebhookSchema),
+    validate(appleWebhookSchema, 'body'),
     handleSubscriptionWebhookApple
 );
 
 router.post('/webhook/google',
-    validate(googleWebhookSchema),
+    validate(googleWebhookSchema, 'body'),
     handleSubscriptionWebhookGoogle
 );
 

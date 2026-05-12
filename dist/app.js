@@ -88,6 +88,7 @@ app.use((0, express_mongo_sanitize_1.default)());
 // API Documentation
 app.use('/api-docs', swagger_ui_express_1.default.serve, swagger_ui_express_1.default.setup(swagger_output_json_1.default));
 // Application Routes
+app.use('/api/v1', index_1.default);
 app.use('/', index_1.default);
 // Default Route
 app.get('/', (req, res) => {

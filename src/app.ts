@@ -105,6 +105,7 @@ app.use(mongoSanitize());
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 // Application Routes
+app.use('/api/v1', router);
 app.use('/', router);
 
 // Default Route
