@@ -8,16 +8,20 @@ const joi_1 = __importDefault(require("joi"));
 // Validation schema for subscription verification
 exports.verifySubscriptionSchema = joi_1.default.object({
     platform: joi_1.default.string()
-        .valid('google_play', 'apple_store')
+        .valid('google_play', 'apple_store', 'revenue_cat')
         .required()
         .messages({
-        'any.only': 'Platform must be either google_play or apple_store',
+        'any.only': 'Platform must be one of: google_play, apple_store, revenue_cat',
         'any.required': 'Platform is required'
     }),
-    receipt: joi_1.default.string()
-        .required()
-        .messages({
-        'any.required': 'Receipt data is required'
+    receipt: joi_1.default.when('platform', {
+        is: 'revenue_cat',
+        then: joi_1.default.string().optional(),
+        otherwise: joi_1.default.string()
+            .required()
+            .messages({
+            'any.required': 'Receipt data is required for google_play and apple_store'
+        })
     }),
     type: joi_1.default.string()
         .valid('sustainbuddy_gpt', 'content_creator')

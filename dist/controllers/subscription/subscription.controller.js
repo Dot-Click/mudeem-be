@@ -19,10 +19,12 @@ const subscription_model_1 = __importDefault(require("../../models/user/subscrip
 const user_model_1 = __importDefault(require("../../models/user/user.model"));
 const googlePlay_1 = require("../../utils/googlePlay");
 const appleStore_1 = require("../../utils/appleStore");
+const revenueCat_1 = require("../../utils/revenueCat");
 // Verify and create/update subscription
 const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { platform, receipt, type } = req.body;
+        const { platform, type } = req.body;
+        const receipt = typeof req.body.receipt === 'string' ? req.body.receipt : undefined;
         const user = req.user;
         if (!user) {
             return (0, errorHandler_1.default)({
@@ -50,6 +52,18 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
         else if (platform === 'apple_store') {
             verificationResult = yield (0, appleStore_1.verifyAppleSubscription)(receipt);
         }
+        else if (platform === 'revenue_cat') {
+            const { activeSubscriptions } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user._id.toString());
+            const activeSub = activeSubscriptions.find(s => s.type === type);
+            verificationResult = {
+                isValid: !!activeSub,
+                status: activeSub ? 'active' : 'expired',
+                startDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.purchaseDate) || new Date(),
+                endDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.expiresDate) || new Date(),
+                subscriptionId: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.productId) || 'rc_' + Date.now(),
+                autoRenew: true
+            };
+        }
         else {
             return (0, errorHandler_1.default)({
                 message: 'Invalid platform',
@@ -67,6 +81,15 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             });
         }
         // Create or update subscription
+        const receiptData = platform === 'revenue_cat'
+            ? {
+                source: 'revenue_cat_api',
+                appUserId: user._id.toString(),
+                type
+            }
+            : {
+                receipt
+            };
         subscriptionData = {
             user: user._id,
             type,
@@ -75,7 +98,7 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             startDate: verificationResult.startDate,
             endDate: verificationResult.endDate,
             platformSubscriptionId: verificationResult.subscriptionId,
-            receiptData: receipt,
+            receiptData,
             autoRenew: verificationResult.autoRenew,
             lastVerifiedAt: new Date()
         };

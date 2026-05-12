@@ -21,7 +21,8 @@ interface SubscriptionStatusResponse {
 // Verify and create/update subscription
 const verifySubscription: RequestHandler = async (req, res) => {
     try {
-        const { platform, receipt, type } = req.body;
+        const { platform, type } = req.body;
+        const receipt = typeof req.body.receipt === 'string' ? req.body.receipt : undefined;
         const user = req.user;
 
         if (!user) {
@@ -82,6 +83,16 @@ const verifySubscription: RequestHandler = async (req, res) => {
         }
 
         // Create or update subscription
+        const receiptData = platform === 'revenue_cat'
+            ? {
+                source: 'revenue_cat_api',
+                appUserId: user._id.toString(),
+                type
+            }
+            : {
+                receipt
+            };
+
         subscriptionData = {
             user: user._id,
             type,
@@ -90,7 +101,7 @@ const verifySubscription: RequestHandler = async (req, res) => {
             startDate: verificationResult.startDate,
             endDate: verificationResult.endDate,
             platformSubscriptionId: verificationResult.subscriptionId,
-            receiptData: receipt,
+            receiptData,
             autoRenew: verificationResult.autoRenew,
             lastVerifiedAt: new Date()
         };

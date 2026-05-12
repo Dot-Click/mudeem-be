@@ -17,7 +17,7 @@ const subscriptionSchema = new mongoose_1.default.Schema({
     },
     platform: {
         type: String,
-        enum: ['google_play', 'apple_store'],
+        enum: ['google_play', 'apple_store', 'revenue_cat'],
         required: true
     },
     status: {

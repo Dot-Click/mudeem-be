@@ -1,7 +1,6 @@
 import express from 'express';
 import { Router } from 'express';
 import { isAuthenticated, isAdmin } from '../../middleware/auth.middleware';
-import { validate } from '../../middleware/validate.middleware';
 import * as eventsController from '../../controllers/events/events.controller';
 
 const router: Router = express.Router();

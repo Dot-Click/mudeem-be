@@ -20,7 +20,9 @@ router.post('/cancel/:subscriptionId', auth_middleware_1.isAuthenticated, (0, va
 // Webhook endpoint (no authentication required as it will be called by Google/Apple)
 router.post('/webhook/apple', (0, validate_middleware_1.validate)(subscription_schema_1.appleWebhookSchema, 'body'), subscription_controller_1.handleSubscriptionWebhookApple);
 router.post('/webhook/google', (0, validate_middleware_1.validate)(subscription_schema_1.googleWebhookSchema, 'body'), subscription_controller_1.handleSubscriptionWebhookGoogle);
-router.post('/webhook/revenuecat', subscription_controller_1.handleRevenueCatWebhook);
-router.post('/webhook', subscription_controller_1.handleRevenueCatWebhook);
+// RevenueCat Webhook
+router.post('/webhook/revenuecat', revenuecat_controller_1.handleRevenueCatWebhook);
+router.post('/webhook', revenuecat_controller_1.handleRevenueCatWebhook);
+// Manual sync with RevenueCat
 router.post('/sync', auth_middleware_1.isAuthenticated, revenuecat_controller_1.syncRevenueCatSubscription);
 exports.default = router;

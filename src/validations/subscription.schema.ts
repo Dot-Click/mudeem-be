@@ -9,11 +9,15 @@ export const verifySubscriptionSchema = Joi.object({
             'any.only': 'Platform must be one of: google_play, apple_store, revenue_cat',
             'any.required': 'Platform is required'
         }),
-    receipt: Joi.string()
-        .required()
-        .messages({
-            'any.required': 'Receipt data is required'
-        }),
+    receipt: Joi.when('platform', {
+        is: 'revenue_cat',
+        then: Joi.string().optional(),
+        otherwise: Joi.string()
+            .required()
+            .messages({
+                'any.required': 'Receipt data is required for google_play and apple_store'
+            })
+    }),
     type: Joi.string()
         .valid('sustainbuddy_gpt', 'content_creator')
         .required()

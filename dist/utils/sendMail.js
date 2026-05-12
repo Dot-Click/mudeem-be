@@ -12,7 +12,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const resend_1 = require("resend");
 const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
 const SendMail = (_a) => __awaiter(void 0, [_a], void 0, function* ({ email, subject, text }) {
-    const fromEmail = process.env.RESEND_SENDER_EMAIL || 'no-reply@email.mudeem.ae';
+    let fromEmail = process.env.RESEND_SENDER_EMAIL || 'no-reply@email.mudeem.ae';
+    if (!fromEmail.includes('@')) {
+        fromEmail = `no-reply@${fromEmail}`;
+    }
     try {
         const { data, error } = yield resend.emails.send({
             from: fromEmail,
