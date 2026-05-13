@@ -189,6 +189,15 @@ const getUserSubscriptions: RequestHandler = async (req, res) => {
             }
         });
 
+        // Fallback: if no Subscription document was found, trust the User model flags
+        // (sync updates the User model even when originalTransactionId is missing)
+        if (!subscriptionStatus.sustainbuddyGPT.active && user.subscriptions?.sustainbuddyGPT) {
+            subscriptionStatus.sustainbuddyGPT.active = true;
+        }
+        if (!subscriptionStatus.contentCreator.active && user.subscriptions?.contentCreator) {
+            subscriptionStatus.contentCreator.active = true;
+        }
+
         return SuccessHandler({
             res,
             data: subscriptionStatus,
