@@ -1,6 +1,6 @@
 export const REVENUECAT_ENTITLEMENTS = {
-    SUSTAINBUDDY_GPT: 'sustainbuddy_gpt_entitlement',
-    CONTENT_CREATOR: 'content_creator_entitlement'
+    SUSTAINBUDDY_GPT: 'sustainbuddy_gpt_access',
+    CONTENT_CREATOR: 'content_creator_access'
 };
 
 export const REVENUECAT_PRODUCTS = {
