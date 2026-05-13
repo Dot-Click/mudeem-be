@@ -13,11 +13,12 @@ interface RevenueCatSubscriberInfo {
 
 export const getRevenueCatUserStatus = async (appUserId: string) => {
     try {
-        const response = await axios.get(`https://api.revenuecat.com/v1/subscribers/${appUserId}`, {
+        const response = await axios.get(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
             headers: {
                 'Authorization': `Bearer ${process.env.REVENUECAT_SECRET_API_KEY}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            timeout: 10000
         });
 
         const subscriber: RevenueCatSubscriberInfo = response.data.subscriber;
