@@ -53,7 +53,7 @@ const verifySubscription: RequestHandler = async (req, res) => {
         } else if (platform === 'apple_store') {
             verificationResult = await verifyAppleSubscription(receipt);
         } else if (platform === 'revenue_cat') {
-            const { activeSubscriptions } = await getRevenueCatUserStatus(user._id.toString());
+            const { activeSubscriptions } = await getRevenueCatUserStatus(user.email);
             const activeSub = activeSubscriptions.find(s => s.type === type);
             
             verificationResult = {
@@ -61,7 +61,7 @@ const verifySubscription: RequestHandler = async (req, res) => {
                 status: activeSub ? 'active' : 'expired',
                 startDate: activeSub?.purchaseDate || new Date(),
                 endDate: activeSub?.expiresDate || new Date(),
-                subscriptionId: activeSub?.productId || 'rc_' + Date.now(),
+                subscriptionId: activeSub?.originalTransactionId || null,
                 autoRenew: true
             };
         } else {
@@ -77,6 +77,16 @@ const verifySubscription: RequestHandler = async (req, res) => {
             return ErrorHandler({
                 message: 'Invalid subscription receipt',
                 statusCode: 400,
+                req,
+                res
+            });
+        }
+
+        if (platform === 'revenue_cat' && !verificationResult.subscriptionId) {
+            console.warn(`[RC Verify] original_transaction_id missing for user ${user._id}, type ${type}`);
+            return ErrorHandler({
+                message: 'Missing original_transaction_id from RevenueCat',
+                statusCode: 502,
                 req,
                 res
             });

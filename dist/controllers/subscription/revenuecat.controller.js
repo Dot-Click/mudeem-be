@@ -51,8 +51,8 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
                 statusCode: 200
             });
         }
-        // Find the user
-        const user = yield user_model_1.default.findById(app_user_id);
+        // app_user_id from RC is the user's email (set at login in the Flutter SDK)
+        const user = yield user_model_1.default.findOne({ email: app_user_id });
         if (!user) {
             // User might have been deleted or doesn't exist in our DB
             return (0, successHandler_1.default)({
@@ -97,9 +97,13 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
                 autoRenew = false;
                 break;
             case 'EXPIRATION':
-            case 'BILLING_ISSUE':
             case 'REVOKE':
                 status = 'expired';
+                autoRenew = false;
+                break;
+            case 'BILLING_ISSUE':
+                // Keep active if still within expiry window; just stop auto-renew
+                status = isStillActive ? 'active' : 'expired';
                 autoRenew = false;
                 break;
             case 'PRODUCT_CHANGE':
@@ -154,7 +158,6 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
 exports.handleRevenueCatWebhook = handleRevenueCatWebhook;
 // Manually sync subscription from RevenueCat API
 const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
     try {
         const user = req.user;
         if (!user) {
@@ -165,7 +168,7 @@ const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 
                 res
             });
         }
-        const { activeSubscriptions, subscriber } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user._id.toString());
+        const { activeSubscriptions, subscriber } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user.email);
         // Update all subscription statuses for this user
         const userUpdateData = {
             'subscriptions.sustainbuddyGPT': false,
@@ -177,13 +180,20 @@ const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 
             if (sub.type === 'content_creator')
                 userUpdateData['subscriptions.contentCreator'] = true;
             // Update or create subscription record
-            yield subscription_model_1.default.findOneAndUpdate({ user: user._id, type: sub.type, platform: 'revenue_cat' }, {
+            if (!sub.originalTransactionId) {
+                console.warn(`[RC Sync] Skipping sub type=${sub.type}: original_transaction_id missing`);
+                continue;
+            }
+            yield subscription_model_1.default.findOneAndUpdate({ platformSubscriptionId: sub.originalTransactionId }, {
+                user: user._id,
+                type: sub.type,
+                platform: 'revenue_cat',
                 status: 'active',
                 startDate: sub.purchaseDate,
                 endDate: sub.expiresDate,
-                platformSubscriptionId: ((_a = subscriber.subscriptions[sub.productId]) === null || _a === void 0 ? void 0 : _a.original_purchase_date) || 'rc_' + Date.now(),
+                platformSubscriptionId: sub.originalTransactionId,
                 receiptData: subscriber,
-                autoRenew: true, // Simplified
+                autoRenew: true,
                 lastVerifiedAt: new Date()
             }, { upsert: true });
         }

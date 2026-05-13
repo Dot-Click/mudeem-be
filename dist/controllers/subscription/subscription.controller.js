@@ -53,14 +53,14 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             verificationResult = yield (0, appleStore_1.verifyAppleSubscription)(receipt);
         }
         else if (platform === 'revenue_cat') {
-            const { activeSubscriptions } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user._id.toString());
+            const { activeSubscriptions } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user.email);
             const activeSub = activeSubscriptions.find(s => s.type === type);
             verificationResult = {
                 isValid: !!activeSub,
                 status: activeSub ? 'active' : 'expired',
                 startDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.purchaseDate) || new Date(),
                 endDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.expiresDate) || new Date(),
-                subscriptionId: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.productId) || 'rc_' + Date.now(),
+                subscriptionId: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.originalTransactionId) || null,
                 autoRenew: true
             };
         }
@@ -76,6 +76,15 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return (0, errorHandler_1.default)({
                 message: 'Invalid subscription receipt',
                 statusCode: 400,
+                req,
+                res
+            });
+        }
+        if (platform === 'revenue_cat' && !verificationResult.subscriptionId) {
+            console.warn(`[RC Verify] original_transaction_id missing for user ${user._id}, type ${type}`);
+            return (0, errorHandler_1.default)({
+                message: 'Missing original_transaction_id from RevenueCat',
+                statusCode: 502,
                 req,
                 res
             });

@@ -30,12 +30,14 @@ export const getRevenueCatUserStatus = async (appUserId: string) => {
                 const isExpired = expiresDate ? expiresDate.getTime() < Date.now() : false;
 
                 if (!isExpired) {
+                    const originalTransactionId = subscriber.subscriptions[data.product_identifier]?.original_transaction_id || null;
                     activeSubscriptions.push({
                         type,
                         entitlementId: entId,
                         expiresDate,
                         purchaseDate: new Date(data.purchase_date),
-                        productId: data.product_identifier
+                        productId: data.product_identifier,
+                        originalTransactionId
                     });
                 }
             }

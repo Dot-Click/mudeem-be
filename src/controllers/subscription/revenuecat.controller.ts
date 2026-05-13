@@ -51,8 +51,8 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
             });
         }
 
-        // Find the user
-        const user = await User.findById(app_user_id);
+        // app_user_id from RC is the user's email (set at login in the Flutter SDK)
+        const user = await User.findOne({ email: app_user_id });
         if (!user) {
             // User might have been deleted or doesn't exist in our DB
             return SuccessHandler({
@@ -102,9 +102,13 @@ const handleRevenueCatWebhook: RequestHandler = async (req, res) => {
                 autoRenew = false;
                 break;
             case 'EXPIRATION':
-            case 'BILLING_ISSUE':
             case 'REVOKE':
                 status = 'expired';
+                autoRenew = false;
+                break;
+            case 'BILLING_ISSUE':
+                // Keep active if still within expiry window; just stop auto-renew
+                status = isStillActive ? 'active' : 'expired';
                 autoRenew = false;
                 break;
             case 'PRODUCT_CHANGE':
@@ -179,7 +183,7 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
             });
         }
 
-        const { activeSubscriptions, subscriber } = await getRevenueCatUserStatus(user._id.toString());
+        const { activeSubscriptions, subscriber } = await getRevenueCatUserStatus(user.email);
 
         // Update all subscription statuses for this user
         const userUpdateData: any = {
@@ -192,15 +196,23 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
             if (sub.type === 'content_creator') userUpdateData['subscriptions.contentCreator'] = true;
 
             // Update or create subscription record
+            if (!sub.originalTransactionId) {
+                console.warn(`[RC Sync] Skipping sub type=${sub.type}: original_transaction_id missing`);
+                continue;
+            }
+
             await Subscription.findOneAndUpdate(
-                { user: user._id, type: sub.type, platform: 'revenue_cat' },
+                { platformSubscriptionId: sub.originalTransactionId },
                 {
+                    user: user._id,
+                    type: sub.type,
+                    platform: 'revenue_cat',
                     status: 'active',
                     startDate: sub.purchaseDate,
                     endDate: sub.expiresDate,
-                    platformSubscriptionId: subscriber.subscriptions[sub.productId]?.original_purchase_date || 'rc_' + Date.now(),
+                    platformSubscriptionId: sub.originalTransactionId,
                     receiptData: subscriber,
-                    autoRenew: true, // Simplified
+                    autoRenew: true,
                     lastVerifiedAt: new Date()
                 },
                 { upsert: true }

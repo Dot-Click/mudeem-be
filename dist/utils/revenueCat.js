@@ -16,6 +16,7 @@ exports.getRevenueCatUserStatus = void 0;
 const axios_1 = __importDefault(require("axios"));
 const subscription_config_1 = require("../config/subscription.config");
 const getRevenueCatUserStatus = (appUserId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const response = yield axios_1.default.get(`https://api.revenuecat.com/v1/subscribers/${appUserId}`, {
             headers: {
@@ -31,12 +32,14 @@ const getRevenueCatUserStatus = (appUserId) => __awaiter(void 0, void 0, void 0,
                 const expiresDate = data.expires_date ? new Date(data.expires_date) : null;
                 const isExpired = expiresDate ? expiresDate.getTime() < Date.now() : false;
                 if (!isExpired) {
+                    const originalTransactionId = ((_a = subscriber.subscriptions[data.product_identifier]) === null || _a === void 0 ? void 0 : _a.original_transaction_id) || null;
                     activeSubscriptions.push({
                         type,
                         entitlementId: entId,
                         expiresDate,
                         purchaseDate: new Date(data.purchase_date),
-                        productId: data.product_identifier
+                        productId: data.product_identifier,
+                        originalTransactionId
                     });
                 }
             }
