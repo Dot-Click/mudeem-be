@@ -185,7 +185,24 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
 
         const { activeSubscriptions, subscriber } = await getRevenueCatUserStatus(user.email);
 
-        // Update all subscription statuses for this user
+        // Safety: if RC returned no entitlements at all, skip the update entirely.
+        // An empty response most likely means a project mismatch or a transient RC
+        // API issue — we must not overwrite existing access with false in that case.
+        // Expiration / cancellation are handled by webhooks, not by sync.
+        const hasAnyEntitlement = Object.keys(subscriber.entitlements).length > 0;
+        if (!hasAnyEntitlement) {
+            console.warn(`[RC Sync] No entitlements returned for ${user.email} — skipping user update to avoid accidental access revocation`);
+            return SuccessHandler({
+                res,
+                data: {
+                    message: 'No entitlements found in RevenueCat — user flags unchanged',
+                    activeSubscriptions: []
+                },
+                statusCode: 200
+            });
+        }
+
+        // Build update from what RC explicitly confirms as active
         const userUpdateData: any = {
             'subscriptions.sustainbuddyGPT': false,
             'subscriptions.contentCreator': false
