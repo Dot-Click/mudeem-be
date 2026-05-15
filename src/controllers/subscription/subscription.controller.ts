@@ -5,7 +5,7 @@ import Subscription from '../../models/user/subscription.model';
 import User from '../../models/user/user.model';
 import { verifyGooglePlaySubscription } from '../../utils/googlePlay';
 import { verifyAppleSubscription } from '../../utils/appleStore';
-import { getRevenueCatUserStatus } from '../../utils/revenueCat';
+import { buildRevenueCatSubscriptionId, getRevenueCatUserStatus } from '../../utils/revenueCat';
 import { ISubscription } from '../../types/models/user';
 
 interface SubscriptionStatus {
@@ -55,14 +55,15 @@ const verifySubscription: RequestHandler = async (req, res) => {
         } else if (platform === 'revenue_cat') {
             const { activeSubscriptions } = await getRevenueCatUserStatus(user.email);
             const activeSub = activeSubscriptions.find(s => s.type === type);
-            
+            const revenueCatSubscriptionId = buildRevenueCatSubscriptionId(user._id.toString(), type);
+
             verificationResult = {
                 isValid: !!activeSub,
                 status: activeSub ? 'active' : 'expired',
                 startDate: activeSub?.purchaseDate || new Date(),
                 endDate: activeSub?.expiresDate || new Date(),
-                subscriptionId: activeSub?.originalTransactionId || null,
-                autoRenew: true
+                subscriptionId: revenueCatSubscriptionId,
+                autoRenew: !!activeSub
             };
         } else {
             return ErrorHandler({
@@ -97,11 +98,20 @@ const verifySubscription: RequestHandler = async (req, res) => {
             ? {
                 source: 'revenue_cat_api',
                 appUserId: user._id.toString(),
-                type
+                type,
+                entitlement: verificationResult.isValid ? {
+                    startDate: verificationResult.startDate,
+                    endDate: verificationResult.endDate,
+                    platformSubscriptionId: verificationResult.subscriptionId
+                } : null
             }
             : {
                 receipt
             };
+
+        const subscriptionLookup = platform === 'revenue_cat'
+            ? { user: user._id, type, platform }
+            : { platformSubscriptionId: verificationResult.subscriptionId };
 
         subscriptionData = {
             user: user._id,
@@ -117,7 +127,7 @@ const verifySubscription: RequestHandler = async (req, res) => {
         };
 
         const subscription = await Subscription.findOneAndUpdate(
-            { platformSubscriptionId: verificationResult.subscriptionId },
+            subscriptionLookup,
             subscriptionData,
             { upsert: true, new: true }
         );

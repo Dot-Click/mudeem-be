@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MAP_ENTITLEMENT_TO_TYPE } from '../config/subscription.config';
+import { ISubscription } from '../types/models/user';
 
 interface RevenueCatSubscriberInfo {
     entitlements: Record<string, {
@@ -10,6 +11,13 @@ interface RevenueCatSubscriberInfo {
     subscriptions: Record<string, any>;
     original_app_user_id: string;
 }
+
+type RevenueCatSubscriptionType = ISubscription['type'];
+
+export const buildRevenueCatSubscriptionId = (
+    appUserId: string,
+    type: RevenueCatSubscriptionType
+) => `rc:${appUserId}:${type}`;
 
 export const getRevenueCatUserStatus = async (appUserId: string) => {
     try {

@@ -44,7 +44,7 @@ const cookieOptions: CookieOptions = {
 // CORS must be handled first, especially for pre-flight (OPTIONS)
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: (_origin, callback) => {
       // Allow any origin for debugging, while still supporting credentials
       return callback(null, true);
     },
