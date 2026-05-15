@@ -202,11 +202,13 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
             });
         }
 
-        // Build update from what RC explicitly confirms as active
-        const userUpdateData: any = {
-            'subscriptions.sustainbuddyGPT': false,
-            'subscriptions.contentCreator': false
-        };
+        // Sync only activates flags — it never clears them.
+        // Deactivation is the webhook's job (EXPIRATION / CANCELLATION events).
+        // Clearing flags here would destroy access whenever RC returns an
+        // expired entitlement (e.g. purchase made under a different RC identity).
+        const userUpdateData: any = {};
+
+        console.log(`[RC Sync] Active entitlements for ${user.email}: ${activeSubscriptions.map(s => s.type).join(', ') || 'none'}`);
 
         for (const sub of activeSubscriptions) {
             if (sub.type === 'sustainbuddy_gpt') userUpdateData['subscriptions.sustainbuddyGPT'] = true;
@@ -236,7 +238,12 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
             );
         }
 
-        await User.findByIdAndUpdate(user._id, userUpdateData);
+        if (Object.keys(userUpdateData).length > 0) {
+            await User.findByIdAndUpdate(user._id, userUpdateData);
+            console.log(`[RC Sync] Updated flags for ${user.email}:`, userUpdateData);
+        } else {
+            console.warn(`[RC Sync] No active subscriptions confirmed by RC for ${user.email} — user flags unchanged`);
+        }
 
         return SuccessHandler({
             res,
