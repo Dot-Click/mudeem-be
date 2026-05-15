@@ -183,7 +183,13 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
             });
         }
 
-        const { activeSubscriptions, subscriber } = await getRevenueCatUserStatus(user.email);
+        // Use the RC SDK's originalAppUserId if the Flutter app sends it.
+        // The SDK may be using an anonymous ID or alias that doesn't match the
+        // user's email — this ensures we query RC with the correct identifier.
+        const rcAppUserId: string = req.body?.rcAppUserId || user.email;
+        console.log(`[RC Sync] Querying RC for user ${user.email} using appUserId: ${rcAppUserId}`);
+
+        const { activeSubscriptions, subscriber } = await getRevenueCatUserStatus(rcAppUserId);
 
         // Safety: if RC returned no entitlements at all, skip the update entirely.
         // An empty response most likely means a project mismatch or a transient RC
@@ -191,7 +197,7 @@ const syncRevenueCatSubscription: RequestHandler = async (req, res) => {
         // Expiration / cancellation are handled by webhooks, not by sync.
         const hasAnyEntitlement = Object.keys(subscriber.entitlements).length > 0;
         if (!hasAnyEntitlement) {
-            console.warn(`[RC Sync] No entitlements returned for ${user.email} — skipping user update to avoid accidental access revocation`);
+            console.warn(`[RC Sync] No entitlements returned for appUserId=${rcAppUserId} (user=${user.email}) — skipping update`);
             return SuccessHandler({
                 res,
                 data: {
