@@ -51,6 +51,13 @@ const poolSchema = new mongoose.Schema<IPool>(
   }
 );
 
+poolSchema.index(
+  { user: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { rideEnded: false }
+  }
+);
 
 const Pool = mongoose.model<IPool>('Pool', poolSchema);
 export default Pool;

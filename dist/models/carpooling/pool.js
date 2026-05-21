@@ -49,5 +49,9 @@ const poolSchema = new mongoose_1.default.Schema({
 }, {
     timestamps: true
 });
+poolSchema.index({ user: 1 }, {
+    unique: true,
+    partialFilterExpression: { rideEnded: false }
+});
 const Pool = mongoose_1.default.model('Pool', poolSchema);
 exports.default = Pool;

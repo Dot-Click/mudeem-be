@@ -29,10 +29,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const poolController = __importStar(require("../../controllers/pool/pool.controller"));
 const auth_middleware_1 = require("../../middleware/auth.middleware");
+const rateLimit_middleware_1 = require("../../middleware/rateLimit.middleware");
 const router = express_1.default.Router();
+const sensitiveWriteLimit = (0, rateLimit_middleware_1.createSensitiveRateLimitMiddleware)(5);
 router
     .route('/')
-    .post(auth_middleware_1.isAuthenticated, poolController.createPool)
+    .post(auth_middleware_1.isAuthenticated, sensitiveWriteLimit, poolController.createPool)
     .get(poolController.getPools);
 router
     .route('/get-all')
@@ -43,6 +45,10 @@ router
     .get(poolController.getPoolById)
     .delete(auth_middleware_1.isAuthenticated, poolController.deletePool)
     .put(auth_middleware_1.isAuthenticated, poolController.updatePool);
-router.route('/end-ride/:id').put(auth_middleware_1.isAuthenticated, poolController.endRide);
-router.route('/start-ride/:id').put(auth_middleware_1.isAuthenticated, poolController.startRide);
+router
+    .route('/end-ride/:id')
+    .put(auth_middleware_1.isAuthenticated, sensitiveWriteLimit, poolController.endRide);
+router
+    .route('/start-ride/:id')
+    .put(auth_middleware_1.isAuthenticated, sensitiveWriteLimit, poolController.startRide);
 exports.default = router;

@@ -117,21 +117,31 @@ const checkout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.checkout = checkout;
 const createOrder = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+    var _a, _b, _c, _d, _e;
     // #swagger.tags = ['order']
     try {
         const { items, deliveryCharge, totalAmount, totalGreenPoints } = req.body;
         console.log('req.user?.greenPoints ', (_a = req.user) === null || _a === void 0 ? void 0 : _a.greenPoints, ' < ', parseInt(totalAmount), ' totalGreenPoints ', totalGreenPoints);
-        if (((_c = (_b = req.user) === null || _b === void 0 ? void 0 : _b.greenPoints) !== null && _c !== void 0 ? _c : 0) < parseInt(totalGreenPoints)) {
+        const parsedTotalAmount = Number(totalAmount);
+        const parsedTotalGreenPoints = Number(totalGreenPoints);
+        if (!Number.isFinite(parsedTotalAmount) || parsedTotalAmount < 0) {
             return (0, errorHandler_1.default)({
-                message: 'Insufficient green points',
+                message: 'Invalid total amount',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
+        if (!Number.isFinite(parsedTotalGreenPoints) || parsedTotalGreenPoints < 0) {
+            return (0, errorHandler_1.default)({
+                message: 'Invalid total green points',
                 statusCode: 400,
                 req,
                 res
             });
         }
         let address = yield address_model_1.default.findOne({
-            user: (_d = req.user) === null || _d === void 0 ? void 0 : _d._id
+            user: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id
         });
         if (!address) {
             if (!req.body.address) {
@@ -142,48 +152,63 @@ const createOrder = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                     res
                 });
             }
-            address = yield address_model_1.default.create(Object.assign({ user: (_e = req.user) === null || _e === void 0 ? void 0 : _e._id }, req.body.address));
+            address = yield address_model_1.default.create(Object.assign({ user: (_c = req.user) === null || _c === void 0 ? void 0 : _c._id }, req.body.address));
         }
         // Logic to create order
+        const orderRewardPoints = 40;
+        const orderTimestamp = new Date();
+        const updatedUser = yield user_model_1.default.findOneAndUpdate({
+            _id: (_d = req.user) === null || _d === void 0 ? void 0 : _d._id,
+            greenPoints: { $gte: parsedTotalAmount }
+        }, {
+            $inc: {
+                greenPoints: -parsedTotalAmount + parsedTotalGreenPoints
+            },
+            $push: {
+                greenPointsHistory: {
+                    $each: [
+                        {
+                            points: parsedTotalAmount,
+                            reason: 'Order placed',
+                            type: 'debit',
+                            date: orderTimestamp
+                        },
+                        {
+                            points: parsedTotalGreenPoints,
+                            reason: 'Order placed cashback',
+                            type: 'credit',
+                            date: orderTimestamp
+                        },
+                        {
+                            points: orderRewardPoints,
+                            reason: 'Order placed bonus',
+                            type: 'credit',
+                            date: orderTimestamp
+                        }
+                    ]
+                }
+            }
+        }, { new: true });
+        if (!updatedUser) {
+            return (0, errorHandler_1.default)({
+                message: 'Insufficient green points',
+                statusCode: 409,
+                req,
+                res
+            });
+        }
         const order = yield order_model_1.default.create({
-            user: (_f = req.user) === null || _f === void 0 ? void 0 : _f._id,
+            user: (_e = req.user) === null || _e === void 0 ? void 0 : _e._id,
             items,
-            totalAmount,
+            totalAmount: parsedTotalAmount,
             deliveryCharge,
             address,
             status: 'confirmed',
-            totalGreenPoints,
+            totalGreenPoints: parsedTotalGreenPoints,
             vendor: items[0].product.vendor
         });
-        // @ts-ignore
-        console.log((_g = req.user) === null || _g === void 0 ? void 0 : _g.greenPoints, totalAmount, totalGreenPoints);
-        if ((_h = req.user) === null || _h === void 0 ? void 0 : _h.greenPoints) {
-            yield user_model_1.default.updateOne({ _id: (_j = req.user) === null || _j === void 0 ? void 0 : _j._id }, {
-                $set: {
-                    greenPoints: req.user.greenPoints - totalAmount + totalGreenPoints
-                },
-                $push: {
-                    greenPointsHistory: {
-                        $each: [
-                            {
-                                points: totalGreenPoints,
-                                reason: "Order placed",
-                                type: "debit",
-                                date: new Date()
-                            },
-                            {
-                                points: 40,
-                                reason: "Order placed",
-                                type: "credit",
-                                date: new Date()
-                            }
-                        ]
-                    }
-                }
-            });
-        }
         var greenPointsHistoryForResponse = {
-            points: 40,
+            points: orderRewardPoints,
             type: 'credit',
             reason: 'Order placed'
         };

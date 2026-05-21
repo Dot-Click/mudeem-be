@@ -129,9 +129,21 @@ const createOrder: RequestHandler = async (req, res) => {
   try {
     const { items, deliveryCharge, totalAmount, totalGreenPoints } = req.body;
     console.log('req.user?.greenPoints ', req.user?.greenPoints, ' < ', parseInt(totalAmount), ' totalGreenPoints ', totalGreenPoints)
-    if ((req.user?.greenPoints ?? 0) < parseInt(totalGreenPoints)) {
+    const parsedTotalAmount = Number(totalAmount);
+    const parsedTotalGreenPoints = Number(totalGreenPoints);
+
+    if (!Number.isFinite(parsedTotalAmount) || parsedTotalAmount < 0) {
       return ErrorHandler({
-        message: 'Insufficient green points',
+        message: 'Invalid total amount',
+        statusCode: 400,
+        req,
+        res
+      });
+    }
+
+    if (!Number.isFinite(parsedTotalGreenPoints) || parsedTotalGreenPoints < 0) {
+      return ErrorHandler({
+        message: 'Invalid total green points',
         statusCode: 400,
         req,
         res
@@ -155,50 +167,67 @@ const createOrder: RequestHandler = async (req, res) => {
       });
     }
     // Logic to create order
+    const orderRewardPoints = 40;
+    const orderTimestamp = new Date();
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: req.user?._id,
+        greenPoints: { $gte: parsedTotalAmount }
+      },
+      {
+        $inc: {
+          greenPoints: -parsedTotalAmount + parsedTotalGreenPoints
+        },
+        $push: {
+          greenPointsHistory: {
+            $each: [
+              {
+                points: parsedTotalAmount,
+                reason: 'Order placed',
+                type: 'debit',
+                date: orderTimestamp
+              },
+              {
+                points: parsedTotalGreenPoints,
+                reason: 'Order placed cashback',
+                type: 'credit',
+                date: orderTimestamp
+              },
+              {
+                points: orderRewardPoints,
+                reason: 'Order placed bonus',
+                type: 'credit',
+                date: orderTimestamp
+              }
+            ]
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return ErrorHandler({
+        message: 'Insufficient green points',
+        statusCode: 409,
+        req,
+        res
+      });
+    }
+
     const order: IOrder | null = await Order.create({
       user: req.user?._id,
       items,
-      totalAmount,
+      totalAmount: parsedTotalAmount,
       deliveryCharge,
       address,
       status: 'confirmed',
-      totalGreenPoints,
+      totalGreenPoints: parsedTotalGreenPoints,
       vendor: items[0].product.vendor
     });
-    // @ts-ignore
-    console.log(req.user?.greenPoints, totalAmount, totalGreenPoints);
-
-    if (req.user?.greenPoints) {
-      await User.updateOne(
-        { _id: req.user?._id },
-        {
-          $set: {
-            greenPoints: req.user.greenPoints - totalAmount + totalGreenPoints
-          },
-          $push: {
-            greenPointsHistory: {
-              $each: [
-                {
-                  points: totalGreenPoints,
-                  reason: "Order placed",
-                  type: "debit",
-                  date: new Date()
-                },
-                {
-                  points: 40,
-                  reason: "Order placed",
-                  type: "credit",
-                  date: new Date()
-                }
-              ]
-            }
-          }
-        }
-      );
-    }
 
     var greenPointsHistoryForResponse = {
-      points: 40,
+      points: orderRewardPoints,
       type: 'credit',
       reason: 'Order placed'
     }

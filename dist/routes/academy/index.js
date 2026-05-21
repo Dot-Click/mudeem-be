@@ -30,9 +30,11 @@ const express_1 = __importDefault(require("express"));
 const auth_middleware_1 = require("../../middleware/auth.middleware");
 const academyController = __importStar(require("../../controllers/academy/book.controller"));
 const multer_middleware_1 = __importDefault(require("../../middleware/multer.middleware"));
+const rateLimit_middleware_1 = require("../../middleware/rateLimit.middleware");
 // import * as schema from '../../validations/academy.schema';
 // import { validate } from '../../middleware/validate.middleware';
 const router = express_1.default.Router();
+const sensitiveWriteLimit = (0, rateLimit_middleware_1.createSensitiveRateLimitMiddleware)(5);
 router
     .route('/book')
     .post(auth_middleware_1.isAuthenticated, auth_middleware_1.isAdmin, multer_middleware_1.default.fields([
@@ -57,7 +59,7 @@ router
     .get(auth_middleware_1.isAuthenticated, academyController.getMyBooks);
 router
     .route('/book/purchase/:id')
-    .put(auth_middleware_1.isAuthenticated, academyController.purchaseBook);
+    .put(auth_middleware_1.isAuthenticated, sensitiveWriteLimit, academyController.purchaseBook);
 router
     .route('/book/findIfAlreadyPurchased/:id')
     .get(auth_middleware_1.isAuthenticated, academyController.findIfAlreadyPurchased);

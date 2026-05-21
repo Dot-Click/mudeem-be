@@ -355,16 +355,41 @@ const purchaseBook: RequestHandler = async (req, res) => {
       });
     }
 
-    if (user.myBooks.includes(book._id)) {
-      return ErrorHandler({
-        message: 'Book already purchased',
-        statusCode: 400,
-        req,
-        res
-      });
-    }
+    const purchaseTimestamp = new Date();
 
-    if (user.greenPoints < book.price) {
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: user._id,
+        greenPoints: { $gte: book.price },
+        myBooks: { $ne: book._id }
+      },
+      {
+        $push: {
+          myBooks: book._id,
+          greenPointsHistory: {
+            points: book.greenPoints,
+            reason: 'Book Purchase',
+            type: 'credit',
+            date: purchaseTimestamp
+          }
+        },
+        $inc: { greenPoints: -book.price + book.greenPoints }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      const latestUser = await User.findById(user._id).select('greenPoints myBooks');
+
+      if (latestUser?.myBooks.some((bookId) => bookId.equals(book._id))) {
+        return ErrorHandler({
+          message: 'Book already purchased',
+          statusCode: 409,
+          req,
+          res
+        });
+      }
+
       return ErrorHandler({
         message: 'Insufficient green points',
         statusCode: 400,
@@ -373,24 +398,11 @@ const purchaseBook: RequestHandler = async (req, res) => {
       });
     }
 
-    await User.findByIdAndUpdate(user._id, {
-      $push: {
-        myBooks: book._id,
-        greenPointsHistory: {
-          points: book.greenPoints,
-          reason: 'Book Purchase',
-          type: 'credit',
-          date: Date.now()
-        }
-      },
-      $inc: { greenPoints: -book.price + book.greenPoints }
-    });
-
     var greenPointsHistory = {
       points: book.greenPoints,
       reason: 'Book Purchase',
       type: 'credit',
-      date: Date.now()
+      date: purchaseTimestamp
     };
     return SuccessHandler({
       res,

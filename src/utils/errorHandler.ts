@@ -13,7 +13,10 @@ const ErrorHandler: ErrorHandlerFunction = ({
 }: ErrorHandlerParams): Response => {
   logger.error({
     method: req.method,
-    url: req.url,
+    url: req.originalUrl || req.url,
+    statusCode,
+    userId: req.user?._id?.toString() || null,
+    ip: req.ip,
     date: new Date(),
     message: message
   });

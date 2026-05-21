@@ -328,15 +328,33 @@ const purchaseBook = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 res
             });
         }
-        if (user.myBooks.includes(book._id)) {
-            return (0, errorHandler_1.default)({
-                message: 'Book already purchased',
-                statusCode: 400,
-                req,
-                res
-            });
-        }
-        if (user.greenPoints < book.price) {
+        const purchaseTimestamp = new Date();
+        const updatedUser = yield user_model_1.default.findOneAndUpdate({
+            _id: user._id,
+            greenPoints: { $gte: book.price },
+            myBooks: { $ne: book._id }
+        }, {
+            $push: {
+                myBooks: book._id,
+                greenPointsHistory: {
+                    points: book.greenPoints,
+                    reason: 'Book Purchase',
+                    type: 'credit',
+                    date: purchaseTimestamp
+                }
+            },
+            $inc: { greenPoints: -book.price + book.greenPoints }
+        }, { new: true });
+        if (!updatedUser) {
+            const latestUser = yield user_model_1.default.findById(user._id).select('greenPoints myBooks');
+            if (latestUser === null || latestUser === void 0 ? void 0 : latestUser.myBooks.some((bookId) => bookId.equals(book._id))) {
+                return (0, errorHandler_1.default)({
+                    message: 'Book already purchased',
+                    statusCode: 409,
+                    req,
+                    res
+                });
+            }
             return (0, errorHandler_1.default)({
                 message: 'Insufficient green points',
                 statusCode: 400,
@@ -344,23 +362,11 @@ const purchaseBook = (req, res) => __awaiter(void 0, void 0, void 0, function* (
                 res
             });
         }
-        yield user_model_1.default.findByIdAndUpdate(user._id, {
-            $push: {
-                myBooks: book._id,
-                greenPointsHistory: {
-                    points: book.greenPoints,
-                    reason: 'Book Purchase',
-                    type: 'credit',
-                    date: Date.now()
-                }
-            },
-            $inc: { greenPoints: -book.price + book.greenPoints }
-        });
         var greenPointsHistory = {
             points: book.greenPoints,
             reason: 'Book Purchase',
             type: 'credit',
-            date: Date.now()
+            date: purchaseTimestamp
         };
         return (0, successHandler_1.default)({
             res,

@@ -40,7 +40,7 @@ const cookieOptions = {
 // --- 2. GLOBAL MIDDLEWARES (Order is crucial) ---
 // CORS must be handled first, especially for pre-flight (OPTIONS)
 app.use((0, cors_1.default)({
-    origin: (origin, callback) => {
+    origin: (_origin, callback) => {
         // Allow any origin for debugging, while still supporting credentials
         return callback(null, true);
     },

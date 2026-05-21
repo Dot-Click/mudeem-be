@@ -12,17 +12,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRevenueCatUserStatus = void 0;
+exports.getRevenueCatUserStatus = exports.buildRevenueCatSubscriptionId = void 0;
 const axios_1 = __importDefault(require("axios"));
 const subscription_config_1 = require("../config/subscription.config");
+const buildRevenueCatSubscriptionId = (appUserId, type) => `rc:${appUserId}:${type}`;
+exports.buildRevenueCatSubscriptionId = buildRevenueCatSubscriptionId;
 const getRevenueCatUserStatus = (appUserId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
     try {
-        const response = yield axios_1.default.get(`https://api.revenuecat.com/v1/subscribers/${appUserId}`, {
+        const response = yield axios_1.default.get(`https://api.revenuecat.com/v1/subscribers/${encodeURIComponent(appUserId)}`, {
             headers: {
                 'Authorization': `Bearer ${process.env.REVENUECAT_SECRET_API_KEY}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            timeout: 10000
         });
         const subscriber = response.data.subscriber;
         const activeSubscriptions = [];

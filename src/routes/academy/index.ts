@@ -3,10 +3,12 @@ import { Router } from 'express';
 import { isAdmin, isAuthenticated } from '../../middleware/auth.middleware';
 import * as academyController from '../../controllers/academy/book.controller';
 import multerMiddleware from '../../middleware/multer.middleware';
+import { createSensitiveRateLimitMiddleware } from '../../middleware/rateLimit.middleware';
 // import * as schema from '../../validations/academy.schema';
 // import { validate } from '../../middleware/validate.middleware';
 
 const router: Router = express.Router();
+const sensitiveWriteLimit = createSensitiveRateLimitMiddleware(5);
 
 router
   .route('/book')
@@ -42,7 +44,7 @@ router
 
 router
   .route('/book/purchase/:id')
-  .put(isAuthenticated, academyController.purchaseBook);
+  .put(isAuthenticated, sensitiveWriteLimit, academyController.purchaseBook);
 
 router
   .route('/book/findIfAlreadyPurchased/:id')

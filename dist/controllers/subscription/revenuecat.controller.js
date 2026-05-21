@@ -158,6 +158,7 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
 exports.handleRevenueCatWebhook = handleRevenueCatWebhook;
 // Manually sync subscription from RevenueCat API
 const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const user = req.user;
         if (!user) {
@@ -168,12 +169,34 @@ const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 
                 res
             });
         }
-        const { activeSubscriptions, subscriber } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user.email);
-        // Update all subscription statuses for this user
-        const userUpdateData = {
-            'subscriptions.sustainbuddyGPT': false,
-            'subscriptions.contentCreator': false
-        };
+        // Use the RC SDK's originalAppUserId if the Flutter app sends it.
+        // The SDK may be using an anonymous ID or alias that doesn't match the
+        // user's email — this ensures we query RC with the correct identifier.
+        const rcAppUserId = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.rcAppUserId) || user.email;
+        console.log(`[RC Sync] Querying RC for user ${user.email} using appUserId: ${rcAppUserId}`);
+        const { activeSubscriptions, subscriber } = yield (0, revenueCat_1.getRevenueCatUserStatus)(rcAppUserId);
+        // Safety: if RC returned no entitlements at all, skip the update entirely.
+        // An empty response most likely means a project mismatch or a transient RC
+        // API issue — we must not overwrite existing access with false in that case.
+        // Expiration / cancellation are handled by webhooks, not by sync.
+        const hasAnyEntitlement = Object.keys(subscriber.entitlements).length > 0;
+        if (!hasAnyEntitlement) {
+            console.warn(`[RC Sync] No entitlements returned for appUserId=${rcAppUserId} (user=${user.email}) — skipping update`);
+            return (0, successHandler_1.default)({
+                res,
+                data: {
+                    message: 'No entitlements found in RevenueCat — user flags unchanged',
+                    activeSubscriptions: []
+                },
+                statusCode: 200
+            });
+        }
+        // Sync only activates flags — it never clears them.
+        // Deactivation is the webhook's job (EXPIRATION / CANCELLATION events).
+        // Clearing flags here would destroy access whenever RC returns an
+        // expired entitlement (e.g. purchase made under a different RC identity).
+        const userUpdateData = {};
+        console.log(`[RC Sync] Active entitlements for ${user.email}: ${activeSubscriptions.map(s => s.type).join(', ') || 'none'}`);
         for (const sub of activeSubscriptions) {
             if (sub.type === 'sustainbuddy_gpt')
                 userUpdateData['subscriptions.sustainbuddyGPT'] = true;
@@ -197,7 +220,13 @@ const syncRevenueCatSubscription = (req, res) => __awaiter(void 0, void 0, void 
                 lastVerifiedAt: new Date()
             }, { upsert: true });
         }
-        yield user_model_1.default.findByIdAndUpdate(user._id, userUpdateData);
+        if (Object.keys(userUpdateData).length > 0) {
+            yield user_model_1.default.findByIdAndUpdate(user._id, userUpdateData);
+            console.log(`[RC Sync] Updated flags for ${user.email}:`, userUpdateData);
+        }
+        else {
+            console.warn(`[RC Sync] No active subscriptions confirmed by RC for ${user.email} — user flags unchanged`);
+        }
         return (0, successHandler_1.default)({
             res,
             data: {

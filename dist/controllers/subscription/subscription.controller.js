@@ -55,13 +55,14 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
         else if (platform === 'revenue_cat') {
             const { activeSubscriptions } = yield (0, revenueCat_1.getRevenueCatUserStatus)(user.email);
             const activeSub = activeSubscriptions.find(s => s.type === type);
+            const revenueCatSubscriptionId = (0, revenueCat_1.buildRevenueCatSubscriptionId)(user._id.toString(), type);
             verificationResult = {
                 isValid: !!activeSub,
                 status: activeSub ? 'active' : 'expired',
                 startDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.purchaseDate) || new Date(),
                 endDate: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.expiresDate) || new Date(),
-                subscriptionId: (activeSub === null || activeSub === void 0 ? void 0 : activeSub.originalTransactionId) || null,
-                autoRenew: true
+                subscriptionId: revenueCatSubscriptionId,
+                autoRenew: !!activeSub
             };
         }
         else {
@@ -94,11 +95,19 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             ? {
                 source: 'revenue_cat_api',
                 appUserId: user._id.toString(),
-                type
+                type,
+                entitlement: verificationResult.isValid ? {
+                    startDate: verificationResult.startDate,
+                    endDate: verificationResult.endDate,
+                    platformSubscriptionId: verificationResult.subscriptionId
+                } : null
             }
             : {
                 receipt
             };
+        const subscriptionLookup = platform === 'revenue_cat'
+            ? { user: user._id, type, platform }
+            : { platformSubscriptionId: verificationResult.subscriptionId };
         subscriptionData = {
             user: user._id,
             type,
@@ -111,7 +120,7 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
             autoRenew: verificationResult.autoRenew,
             lastVerifiedAt: new Date()
         };
-        const subscription = yield subscription_model_1.default.findOneAndUpdate({ platformSubscriptionId: verificationResult.subscriptionId }, subscriptionData, { upsert: true, new: true });
+        const subscription = yield subscription_model_1.default.findOneAndUpdate(subscriptionLookup, subscriptionData, { upsert: true, new: true });
         // Update user's subscription status based on type
         const updateData = {};
         if (type === 'sustainbuddy_gpt') {
@@ -139,6 +148,7 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
 exports.verifySubscription = verifySubscription;
 // Get user's active subscriptions
 const getUserSubscriptions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
     try {
         const user = req.user;
         if (!user) {
@@ -175,6 +185,14 @@ const getUserSubscriptions = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 subscriptionStatus.contentCreator.subscription = sub.toObject();
             }
         });
+        // Fallback: if no Subscription document was found, trust the User model flags
+        // (sync updates the User model even when originalTransactionId is missing)
+        if (!subscriptionStatus.sustainbuddyGPT.active && ((_a = user.subscriptions) === null || _a === void 0 ? void 0 : _a.sustainbuddyGPT)) {
+            subscriptionStatus.sustainbuddyGPT.active = true;
+        }
+        if (!subscriptionStatus.contentCreator.active && ((_b = user.subscriptions) === null || _b === void 0 ? void 0 : _b.contentCreator)) {
+            subscriptionStatus.contentCreator.active = true;
+        }
         return (0, successHandler_1.default)({
             res,
             data: subscriptionStatus,

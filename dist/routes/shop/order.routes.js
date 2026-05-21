@@ -31,14 +31,16 @@ const auth_middleware_1 = require("../../middleware/auth.middleware");
 const orderController = __importStar(require("../../controllers/shop/order.controller"));
 const schema = __importStar(require("../../validations/order.schema"));
 const validate_middleware_1 = require("../../middleware/validate.middleware");
+const rateLimit_middleware_1 = require("../../middleware/rateLimit.middleware");
 const router = express_1.default.Router();
+const sensitiveWriteLimit = (0, rateLimit_middleware_1.createSensitiveRateLimitMiddleware)(5);
 router
     .route('/checkout')
     .post(auth_middleware_1.isAuthenticated, (0, validate_middleware_1.validate)(schema.checkoutSchema), orderController.checkout);
 router
     .route('/')
     .get(auth_middleware_1.isAuthenticated, orderController.getOrders)
-    .post(auth_middleware_1.isAuthenticated, (0, validate_middleware_1.validate)(schema.createOrderSchema), orderController.createOrder)
+    .post(auth_middleware_1.isAuthenticated, sensitiveWriteLimit, (0, validate_middleware_1.validate)(schema.createOrderSchema), orderController.createOrder)
     .patch(auth_middleware_1.isAuthenticated, (0, validate_middleware_1.validate)(schema.updateStatusSchema), orderController.updateOrderStatus);
 router.route('/review').post(auth_middleware_1.isAuthenticated, orderController.reviewProduct);
 exports.default = router;

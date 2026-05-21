@@ -4,8 +4,10 @@ import { isAuthenticated } from '../../middleware/auth.middleware';
 import * as orderController from '../../controllers/shop/order.controller';
 import * as schema from '../../validations/order.schema';
 import { validate } from '../../middleware/validate.middleware';
+import { createSensitiveRateLimitMiddleware } from '../../middleware/rateLimit.middleware';
 
 const router: Router = express.Router();
+const sensitiveWriteLimit = createSensitiveRateLimitMiddleware(5);
 
 router
   .route('/checkout')
@@ -20,6 +22,7 @@ router
   .get(isAuthenticated, orderController.getOrders)
   .post(
     isAuthenticated,
+    sensitiveWriteLimit,
     validate(schema.createOrderSchema),
     orderController.createOrder
   )

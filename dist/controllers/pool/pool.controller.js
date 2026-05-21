@@ -22,29 +22,16 @@ const settings_1 = require("../../models/settings");
 const firebase_1 = require("../../utils/firebase");
 // done.
 const createPool = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a;
     // #swagger.tags = ['carpooling']
     try {
         const { pickupLocation, whereTo, time, availableSeats } = req.body;
-        const isPoolCreated = yield pool_1.default.find({
-            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id,
-            rideEnded: false
-        });
-        console.log('Selceted pool', isPoolCreated);
-        if (isPoolCreated.length > 0) {
-            return (0, errorHandler_1.default)({
-                message: "Can't create more than one pool.",
-                statusCode: 500,
-                req,
-                res
-            });
-        }
         const pool = yield pool_1.default.create({
             pickupLocation,
             whereTo,
             time,
             availableSeats,
-            user: (_b = req.user) === null || _b === void 0 ? void 0 : _b.id,
+            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id,
             existingUsers: []
         });
         return (0, successHandler_1.default)({
@@ -54,6 +41,14 @@ const createPool = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         });
     }
     catch (error) {
+        if (error.code === 11000) {
+            return (0, errorHandler_1.default)({
+                message: "Can't create more than one active pool.",
+                statusCode: 409,
+                req,
+                res
+            });
+        }
         return (0, errorHandler_1.default)({
             message: error.message,
             statusCode: 500,
@@ -305,37 +300,52 @@ const updatePool = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
 });
 exports.updatePool = updatePool;
 const endRide = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     // #swagger.tags = ['carpooling']
     try {
         const id = req.params.id;
-        const pool = yield pool_1.default.findById(id).populate('user', false);
-        if (!pool) {
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             return (0, errorHandler_1.default)({
-                message: 'Pool not found.',
-                statusCode: 404,
+                message: 'Invalid pool id.',
+                statusCode: 400,
                 req,
                 res
             });
         }
-        // Move existing users to droppedOffUsers if they are not already there
-        pool.existingUsers.forEach((user) => {
-            if (!pool.droppedOffUsers.includes(user)) {
-                pool.droppedOffUsers.push(user);
+        const pool = yield pool_1.default.findOneAndUpdate({
+            _id: id,
+            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a._id,
+            rideEnded: false
+        }, {
+            $set: {
+                rideEnded: true,
+                rideStarted: true
+            }
+        }, {
+            new: false
+        });
+        if (!pool) {
+            return (0, errorHandler_1.default)({
+                message: 'Ride not found, already ended, or not owned by the user.',
+                statusCode: 409,
+                req,
+                res
+            });
+        }
+        yield pool_1.default.updateOne({ _id: pool._id }, {
+            $addToSet: {
+                droppedOffUsers: { $each: pool.existingUsers }
+            },
+            $set: {
+                existingUsers: []
             }
         });
-        // Clear existing users
-        pool.existingUsers = [];
-        // Mark the ride as ended
-        pool.rideEnded = true;
-        yield pool.save();
         const setting = yield settings_1.Setting.findOne().sort({ createdAt: -1 });
         if (!setting) {
             throw new Error('Settings not found');
         }
-        let userRideOwnerPoints = 0;
         var greenPointsHistoryForResponse = {
-            points: userRideOwnerPoints,
+            points: 0,
             type: 'credit',
             reason: 'carpooling'
         };
@@ -343,7 +353,7 @@ const endRide = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         greenPointsHistoryForResponse.points = carPoolingGreenPoints;
         const user = req.user;
         const userToken = (user === null || user === void 0 ? void 0 : user.firebaseToken) || '';
-        yield user_model_1.default.updateOne({ _id: (_a = req.user) === null || _a === void 0 ? void 0 : _a._id }, {
+        yield user_model_1.default.findOneAndUpdate({ _id: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id }, {
             $inc: { greenPoints: carPoolingGreenPoints },
             $push: {
                 greenPointsHistory: {
@@ -355,24 +365,6 @@ const endRide = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
             }
         });
         yield (0, firebase_1.sentPushNotification)(userToken, `Lift accepted`, `Congratulations! You have earned ${carPoolingGreenPoints} green points for Lift.`, user === null || user === void 0 ? void 0 : user._id.toString(), carPoolingGreenPoints.toString());
-        const points = carPoolingGreenPoints / 4;
-        const rideOwnerPoints = Math.floor(points);
-        const userPoints = Math.floor(points);
-        greenPointsHistoryForResponse.points = rideOwnerPoints;
-        const userTotalPoints = (user.greenPoints || 0) + userPoints;
-        yield user_model_1.default.updateOne({ _id: user._id }, {
-            $set: {
-                greenPoints: userTotalPoints
-            },
-            $push: {
-                greenPointsHistory: {
-                    points: userPoints,
-                    reason: "Lift",
-                    type: "credit",
-                    date: new Date()
-                }
-            }
-        });
         return (0, successHandler_1.default)({
             res,
             data: greenPointsHistoryForResponse,
@@ -390,20 +382,36 @@ const endRide = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.endRide = endRide;
 const startRide = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     // #swagger.tags = ['carpooling']
     try {
         const id = req.params.id;
-        const pool = yield pool_1.default.findById(id);
-        if (!pool) {
+        if (!mongoose_1.default.Types.ObjectId.isValid(id)) {
             return (0, errorHandler_1.default)({
-                message: 'Pool not found.',
-                statusCode: 500,
+                message: 'Invalid pool id.',
+                statusCode: 400,
                 req,
                 res
             });
         }
-        pool.rideStarted = true;
-        yield pool.save();
+        const pool = yield pool_1.default.findOneAndUpdate({
+            _id: id,
+            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a._id,
+            rideEnded: false,
+            rideStarted: false
+        }, {
+            $set: {
+                rideStarted: true
+            }
+        }, { new: true });
+        if (!pool) {
+            return (0, errorHandler_1.default)({
+                message: 'Ride not found, already started, already ended, or not owned by the user.',
+                statusCode: 409,
+                req,
+                res
+            });
+        }
         return (0, successHandler_1.default)({
             res,
             data: pool,

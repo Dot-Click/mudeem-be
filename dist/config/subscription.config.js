@@ -2,8 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MAP_ENTITLEMENT_TO_TYPE = exports.REVENUECAT_PRODUCTS = exports.REVENUECAT_ENTITLEMENTS = void 0;
 exports.REVENUECAT_ENTITLEMENTS = {
-    SUSTAINBUDDY_GPT: 'sustainbuddy_gpt_entitlement',
-    CONTENT_CREATOR: 'content_creator_entitlement'
+    SUSTAINBUDDY_GPT: 'sustainbuddy_gpt_access',
+    CONTENT_CREATOR: 'content_creator_access'
 };
 exports.REVENUECAT_PRODUCTS = {
     SUSTAINBUDDY_GPT_MONTHLY: 'sustainbuddy_gpt_monthly',
