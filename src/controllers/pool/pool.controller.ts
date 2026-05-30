@@ -14,6 +14,22 @@ const createPool: RequestHandler = async (req, res) => {
   try {
     const { pickupLocation, whereTo, time, availableSeats } = req.body;
 
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentRideCount = await Pool.countDocuments({
+      user: req.user?.id,
+      createdAt: { $gte: twentyFourHoursAgo }
+    });
+
+    if (recentRideCount >= 2) {
+      return ErrorHandler({
+        message:
+          "You've reached your daily ride limit. Please try again after 24 hours.",
+        statusCode: 429,
+        req,
+        res
+      });
+    }
+
     const pool = await Pool.create({
       pickupLocation,
       whereTo,

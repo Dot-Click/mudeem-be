@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm run *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Jawad-projects\\\\mudeem-be\" -Recurse -Force -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(xargs grep -l \"pool\\\\|carpool\")"
     ]
   }
 }
