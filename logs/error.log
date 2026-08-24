@@ -1087,3 +1087,10 @@
 {"date":"2025-06-16T10:13:39.848Z","level":"error","message":"Invalid subscription type","method":"POST","service":"user-service","url":"/verify"}
 {"date":"2025-06-16T10:20:11.305Z","level":"error","message":"You need to subscribe to SustainBuddy GPT to access this feature","method":"GET","service":"user-service","url":"/"}
 {"date":"2025-06-16T10:22:04.545Z","level":"error","message":"You need to subscribe to SustainBuddy GPT to access this feature","method":"GET","service":"user-service","url":"/"}
+{"date":"2026-08-24T07:34:49.435Z","ip":"::ffff:127.0.0.1","level":"error","message":"Incorrect email.","method":"POST","service":"user-service","statusCode":400,"url":"/auth/login","userId":null}
+{"date":"2026-08-24T07:35:59.497Z","ip":"::ffff:127.0.0.1","level":"error","message":"imageUrl is not a valid Cloudinary URL","method":"POST","service":"user-service","statusCode":400,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}
+{"date":"2026-08-24T07:35:59.518Z","ip":"::ffff:127.0.0.1","level":"error","message":"imageUrl is not a valid Cloudinary URL","method":"POST","service":"user-service","statusCode":400,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}
+{"date":"2026-08-24T07:35:59.533Z","ip":"::ffff:127.0.0.1","level":"error","message":"imageUrl is not a valid Cloudinary URL","method":"POST","service":"user-service","statusCode":400,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}
+{"date":"2026-08-24T07:35:59.546Z","ip":"::ffff:127.0.0.1","level":"error","message":"imageUrl is not a valid Cloudinary URL","method":"POST","service":"user-service","statusCode":400,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}
+{"date":"2026-08-24T07:36:38.238Z","ip":"::ffff:127.0.0.1","level":"error","message":"Daily CO2 scan limit reached","method":"POST","service":"user-service","statusCode":429,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}
+{"date":"2026-08-24T07:37:00.436Z","ip":"::ffff:127.0.0.1","level":"error","message":"CO2 analysis provider request failed","method":"POST","service":"user-service","statusCode":429,"url":"/co2/analyze","userId":"6a8bf4240402f057e926d8b4"}

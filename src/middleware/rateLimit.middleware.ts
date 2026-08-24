@@ -4,9 +4,15 @@ import { NextFunction, Request, Response } from 'express';
 const rateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
-  message: 'Too many requests from this IP, please try again after 15 minutes',
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  handler: (_req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many requests from this IP, please try again after 15 minutes',
+      code: 'RATE_LIMIT'
+    });
+  }
 });
 
 export const rateLimitMiddleware = (
@@ -24,8 +30,30 @@ export const createSensitiveRateLimitMiddleware = (
   rateLimit({
     windowMs,
     max,
-    message: 'Too many sensitive requests, please try again shortly.',
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: Request) => req.user?._id?.toString() || req.ip
+    keyGenerator: (req: Request) => req.user?._id?.toString() || req.ip,
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({
+        success: false,
+        message: 'Too many sensitive requests, please try again shortly.',
+        code: 'RATE_LIMIT'
+      });
+    }
+  });
+
+export const createUserRateLimitMiddleware = (
+  max: number,
+  windowMs: number,
+  message: string
+) =>
+  rateLimit({
+    windowMs,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: Request) => req.user?._id?.toString() || req.ip,
+    handler: (_req: Request, res: Response) => {
+      res.status(429).json({ success: false, message, code: 'RATE_LIMIT' });
+    }
   });

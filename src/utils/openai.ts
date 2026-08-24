@@ -69,3 +69,28 @@ export const generateAiResponse = async (
     return null;
   }
 };
+
+export const requestCo2Analysis = async (
+  imageUrl: string,
+  weightInGrams: number,
+  language: 'en' | 'ar'
+): Promise<string | null> => {
+  const prompt = `What is in this image? The weight is ${weightInGrams} grams. How much total CO2 emission does this item contain? Please respond with the item name and CO2 emission in this format: {"status": "success", "item_name": "Item Name", "total_co2_emission_in_grams": "X"}. If you can't identify the item, return {"status": "error"},object values response should be in ${language} language. The weight value is always in grams.`;
+
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    max_tokens: 300,
+    response_format: { type: 'json_object' },
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: imageUrl } }
+        ]
+      }
+    ]
+  });
+
+  return completion.choices[0]?.message?.content ?? null;
+};

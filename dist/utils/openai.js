@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateAiResponse = exports.createThread = void 0;
+exports.requestCo2Analysis = exports.generateAiResponse = exports.createThread = void 0;
 const openai_1 = __importDefault(require("openai"));
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config({ path: '../config/config.env' });
@@ -68,3 +68,23 @@ const generateAiResponse = (threadId, prompt, tags) => __awaiter(void 0, void 0,
     }
 });
 exports.generateAiResponse = generateAiResponse;
+const requestCo2Analysis = (imageUrl, weightInGrams, language) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    const prompt = `What is in this image? The weight is ${weightInGrams} grams. How much total CO2 emission does this item contain? Please respond with the item name and CO2 emission in this format: {"status": "success", "item_name": "Item Name", "total_co2_emission_in_grams": "X"}. If you can't identify the item, return {"status": "error"},object values response should be in ${language} language. The weight value is always in grams.`;
+    const completion = yield openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        max_tokens: 300,
+        response_format: { type: 'json_object' },
+        messages: [
+            {
+                role: 'user',
+                content: [
+                    { type: 'text', text: prompt },
+                    { type: 'image_url', image_url: { url: imageUrl } }
+                ]
+            }
+        ]
+    });
+    return (_c = (_b = (_a = completion.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) !== null && _c !== void 0 ? _c : null;
+});
+exports.requestCo2Analysis = requestCo2Analysis;

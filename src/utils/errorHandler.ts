@@ -9,7 +9,8 @@ const ErrorHandler: ErrorHandlerFunction = ({
   message,
   statusCode,
   req,
-  res
+  res,
+  code
 }: ErrorHandlerParams): Response => {
   logger.error({
     method: req.method,
@@ -23,7 +24,8 @@ const ErrorHandler: ErrorHandlerFunction = ({
 
   return res.status(statusCode).json({
     success: false,
-    message: message
+    message: message,
+    ...(code ? { code } : {})
   });
 };
 

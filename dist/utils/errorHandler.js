@@ -4,7 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const logger_1 = __importDefault(require("./logger"));
-const ErrorHandler = ({ message, statusCode, req, res }) => {
+const ErrorHandler = ({ message, statusCode, req, res, code }) => {
     var _a, _b;
     logger_1.default.error({
         method: req.method,
@@ -15,9 +15,6 @@ const ErrorHandler = ({ message, statusCode, req, res }) => {
         date: new Date(),
         message: message
     });
-    return res.status(statusCode).json({
-        success: false,
-        message: message
-    });
+    return res.status(statusCode).json(Object.assign({ success: false, message: message }, (code ? { code } : {})));
 };
 exports.default = ErrorHandler;

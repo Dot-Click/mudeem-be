@@ -267,8 +267,10 @@ exports.verifyEmail = verifyEmail;
 const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // #swagger.tags = ['auth']
     try {
-        const { email, password, firebaseToken } = req.body;
-        console.log(email, password);
+        // Credentials are read from req.body by the passport 'local' strategy and
+        // are deliberately not bound here — this previously logged the plaintext
+        // password on every sign-in, which persists in log retention.
+        const { firebaseToken } = req.body;
         //@ts-expect-error passport.authenticate has no return type
         passport_1.default.authenticate('local', (err, user, info) => __awaiter(void 0, void 0, void 0, function* () {
             if (err) {
@@ -312,7 +314,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 });
             }
             if (firebaseToken) {
-                const updatedUser = yield user_model_1.default.findOneAndUpdate({ _id: user._id }, // Find by ID
+                yield user_model_1.default.findOneAndUpdate({ _id: user._id }, // Find by ID
                 { firebaseToken }, // Update the field
                 { new: true, runValidators: true } // Return updated user & validate
                 );
@@ -687,8 +689,9 @@ const toggleNotifications = (req, res) => __awaiter(void 0, void 0, void 0, func
             });
         }
         findUser.allowNotifications = !findUser.allowNotifications;
-        const resss = yield findUser.save();
-        console.log(resss);
+        // The saved document contains the password hash, email, phone and reset
+        // tokens — never log it.
+        yield findUser.save();
         return (0, successHandler_1.default)({
             data: 'Notification successfully updated',
             statusCode: 200,

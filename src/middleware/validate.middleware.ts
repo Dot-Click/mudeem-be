@@ -10,7 +10,7 @@ export const validate = (schema: AnySchema, source: ValidationSource = 'body') =
 
     if (error) {
       return res.status(400).json({
-        success: 'false',
+        success: false,
         message: error.details[0].message
       });
     }

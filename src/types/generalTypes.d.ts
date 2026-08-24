@@ -38,6 +38,12 @@ export interface ErrorHandlerParams {
   statusCode: number;
   req: Request;
   res: Response;
+  /**
+   * Optional stable identifier for the failure, e.g. 'DAILY_LIMIT'. Clients use
+   * this instead of matching on `message`, so wording (and translation) can
+   * change without breaking behaviour.
+   */
+  code?: string;
 }
 
 export type ErrorHandlerFunction = (params: ErrorHandlerParams) => Response;

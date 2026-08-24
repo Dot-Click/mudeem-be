@@ -22,16 +22,29 @@ const settings_1 = require("../../models/settings");
 const firebase_1 = require("../../utils/firebase");
 // done.
 const createPool = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     // #swagger.tags = ['carpooling']
     try {
         const { pickupLocation, whereTo, time, availableSeats } = req.body;
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentRideCount = yield pool_1.default.countDocuments({
+            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id,
+            createdAt: { $gte: twentyFourHoursAgo }
+        });
+        if (recentRideCount >= 2) {
+            return (0, errorHandler_1.default)({
+                message: "You've reached your daily ride limit. Please try again after 24 hours.",
+                statusCode: 429,
+                req,
+                res
+            });
+        }
         const pool = yield pool_1.default.create({
             pickupLocation,
             whereTo,
             time,
             availableSeats,
-            user: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id,
+            user: (_b = req.user) === null || _b === void 0 ? void 0 : _b.id,
             existingUsers: []
         });
         return (0, successHandler_1.default)({

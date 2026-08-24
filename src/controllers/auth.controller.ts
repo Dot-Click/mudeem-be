@@ -263,8 +263,10 @@ const verifyEmail: RequestHandler = async (req, res) => {
 const login: RequestHandler = async (req, res) => {
   // #swagger.tags = ['auth']
   try {
-    const { email, password, firebaseToken } = req.body as authTypes.LoginBody;
-    console.log(email, password);
+    // Credentials are read from req.body by the passport 'local' strategy and
+    // are deliberately not bound here — this previously logged the plaintext
+    // password on every sign-in, which persists in log retention.
+    const { firebaseToken } = req.body as authTypes.LoginBody;
     //@ts-expect-error passport.authenticate has no return type
     passport.authenticate('local', async (err, user, info) => {
       if (err) {
@@ -309,7 +311,7 @@ const login: RequestHandler = async (req, res) => {
       }
 
       if (firebaseToken) {
-        const updatedUser = await User.findOneAndUpdate(
+        await User.findOneAndUpdate(
           { _id: user._id }, // Find by ID
           { firebaseToken }, // Update the field
           { new: true, runValidators: true } // Return updated user & validate
@@ -690,8 +692,9 @@ const toggleNotifications: RequestHandler = async (req, res) => {
       });
     }
     findUser.allowNotifications = !findUser.allowNotifications;
-    const resss = await findUser.save();
-    console.log(resss);
+    // The saved document contains the password hash, email, phone and reset
+    // tokens — never log it.
+    await findUser.save();
 
     return SuccessHandler({
       data: 'Notification successfully updated',
