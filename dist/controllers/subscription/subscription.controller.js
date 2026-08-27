@@ -20,6 +20,7 @@ const user_model_1 = __importDefault(require("../../models/user/user.model"));
 const googlePlay_1 = require("../../utils/googlePlay");
 const appleStore_1 = require("../../utils/appleStore");
 const revenueCat_1 = require("../../utils/revenueCat");
+const entitlement_1 = require("../../utils/entitlement");
 // Verify and create/update subscription
 const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -148,7 +149,6 @@ const verifySubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
 exports.verifySubscription = verifySubscription;
 // Get user's active subscriptions
 const getUserSubscriptions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
     try {
         const user = req.user;
         if (!user) {
@@ -159,40 +159,26 @@ const getUserSubscriptions = (req, res) => __awaiter(void 0, void 0, void 0, fun
                 res
             });
         }
-        // Get all subscriptions for the user
-        const subscriptions = yield subscription_model_1.default.find({
-            user: user._id
-        }).sort({ createdAt: -1 });
-        // Group subscriptions by type
+        // Entitlement is resolved against the subscription's end date, and
+        // re-checked with RevenueCat when the stored record looks lapsed.
+        // Reading `status` alone would keep access alive forever whenever a
+        // webhook was missed, and would also drop access the moment a user
+        // turned off auto-renew despite having paid for the rest of the period.
+        const entitlements = yield (0, entitlement_1.resolveEntitlements)(user._id, user.email, user.subscriptions);
         const subscriptionStatus = {
             sustainbuddyGPT: {
-                active: false,
-                subscription: null
+                active: entitlements.sustainbuddy_gpt.active,
+                subscription: entitlements.sustainbuddy_gpt.subscription
+                    ? entitlements.sustainbuddy_gpt.subscription.toObject()
+                    : null
             },
             contentCreator: {
-                active: false,
-                subscription: null
+                active: entitlements.content_creator.active,
+                subscription: entitlements.content_creator.subscription
+                    ? entitlements.content_creator.subscription.toObject()
+                    : null
             }
         };
-        // Update status for each subscription type
-        subscriptions.forEach((sub) => {
-            if (sub.type === 'sustainbuddy_gpt' && sub.status === 'active') {
-                subscriptionStatus.sustainbuddyGPT.active = true;
-                subscriptionStatus.sustainbuddyGPT.subscription = sub.toObject();
-            }
-            else if (sub.type === 'content_creator' && sub.status === 'active') {
-                subscriptionStatus.contentCreator.active = true;
-                subscriptionStatus.contentCreator.subscription = sub.toObject();
-            }
-        });
-        // Fallback: if no Subscription document was found, trust the User model flags
-        // (sync updates the User model even when originalTransactionId is missing)
-        if (!subscriptionStatus.sustainbuddyGPT.active && ((_a = user.subscriptions) === null || _a === void 0 ? void 0 : _a.sustainbuddyGPT)) {
-            subscriptionStatus.sustainbuddyGPT.active = true;
-        }
-        if (!subscriptionStatus.contentCreator.active && ((_b = user.subscriptions) === null || _b === void 0 ? void 0 : _b.contentCreator)) {
-            subscriptionStatus.contentCreator.active = true;
-        }
         return (0, successHandler_1.default)({
             res,
             data: subscriptionStatus,
@@ -234,22 +220,21 @@ const cancelSubscription = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 res
             });
         }
-        subscription.status = 'cancelled';
-        subscription.autoRenew = false;
-        yield subscription.save();
-        // Update user's subscription status based on type
-        const updateData = {};
-        if (subscription.type === 'sustainbuddy_gpt') {
-            updateData['subscriptions.sustainbuddyGPT'] = false;
-        }
-        else if (subscription.type === 'content_creator') {
-            updateData['subscriptions.contentCreator'] = false;
-        }
-        yield user_model_1.default.findByIdAndUpdate(user._id, updateData);
-        return (0, successHandler_1.default)({
-            res,
-            data: subscription,
-            statusCode: 200
+        // A store subscription cannot be cancelled server-side. Google and Apple
+        // own the billing agreement, so this endpoint used to do two harmful
+        // things at once: it left the user being charged while revoking the
+        // access they had already paid for, and the next RENEWAL webhook simply
+        // flipped the record back to 'active'.
+        //
+        // Cancellation now happens in the store's own UI, which the app deep
+        // links to. This endpoint is kept only to return a clear instruction to
+        // any client still calling it.
+        return (0, errorHandler_1.default)({
+            message: 'Subscriptions must be cancelled from the App Store or Google Play. Open Manage Subscription in the app to continue.',
+            statusCode: 400,
+            code: 'CANCEL_VIA_STORE',
+            req,
+            res
         });
     }
     catch (error) {

@@ -11,6 +11,10 @@ export interface ISubscription extends Document {
     receiptData: Record<string, any>;
     autoRenew: boolean;
     lastVerifiedAt: Date;
+    /** RevenueCat event_timestamp_ms of the last webhook applied to this record. */
+    lastEventTimestampMs?: number;
+    /** Google Play pause: when the subscription is scheduled to resume. */
+    autoResumeAt?: Date | null;
     createdAt: Date;
     updatedAt: Date;
 }

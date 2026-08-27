@@ -1,4 +1,5 @@
 import User from '../models/user/user.model';
+import Address from '../models/user/address.model';
 import { IUser, UserSession } from '../types/models/user';
 import SuccessHandler from '../utils/successHandler';
 import ErrorHandler from '../utils/errorHandler';
@@ -713,8 +714,27 @@ const toggleNotifications: RequestHandler = async (req, res) => {
 
 const deleteProfile: RequestHandler = async (req, res) => {
   try {
-    const { id } = req.params;
-    const user = await User.findOne({ _id: id, role: 'user' });
+    const targetUserId = req.params.id || req.user?._id;
+    if (!targetUserId) {
+      return ErrorHandler({
+        message: 'User ID is required',
+        statusCode: 400,
+        req,
+        res
+      });
+    }
+
+    const currentUser = req.user as IUser | undefined;
+    if (req.params.id && currentUser && currentUser.role !== 'admin' && currentUser._id.toString() !== req.params.id) {
+      return ErrorHandler({
+        message: 'Unauthorized to delete this account',
+        statusCode: 403,
+        req,
+        res
+      });
+    }
+
+    const user = await User.findById(targetUserId);
     if (!user) {
       return ErrorHandler({
         message: 'User not found',
@@ -723,9 +743,30 @@ const deleteProfile: RequestHandler = async (req, res) => {
         res
       });
     }
-    await user.delete();
+
+    // Cascade cleanup
+    await Address.deleteMany({ user: targetUserId });
+    await User.findByIdAndDelete(targetUserId);
+
+    if (req.user && req.user._id.toString() === targetUserId.toString()) {
+      req.logout((err) => {
+        if (err) {
+          // Log error but proceed with session destroy
+        }
+        req.session.destroy(() => {
+          res.clearCookie('connect.sid');
+          return SuccessHandler({
+            data: { message: 'Account deleted successfully' },
+            statusCode: 200,
+            res
+          });
+        });
+      });
+      return;
+    }
+
     return SuccessHandler({
-      data: { user: user, message: 'User successfully updated' },
+      data: { message: 'Account deleted successfully' },
       statusCode: 200,
       res
     });

@@ -10,62 +10,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyGooglePlaySubscription = void 0;
-const googleapis_1 = require("googleapis");
-const google_auth_library_1 = require("google-auth-library");
-const verifyGooglePlaySubscription = (receipt) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    try {
-        // Initialize Google Play Developer API client
-        const auth = new google_auth_library_1.JWT({
-            email: process.env.GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL,
-            key: (_a = process.env.GOOGLE_PLAY_PRIVATE_KEY) === null || _a === void 0 ? void 0 : _a.replace(/\\n/g, '\n'),
-            scopes: ['https://www.googleapis.com/auth/androidpublisher']
-        });
-        const androidPublisher = googleapis_1.google.androidpublisher({
-            version: 'v3',
-            auth
-        });
-        // Verify the subscription
-        const response = yield androidPublisher.purchases.subscriptions.get({
-            packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME || '',
-            subscriptionId: receipt,
-            token: receipt
-        });
-        const subscription = response.data;
-        // Check subscription status
-        const now = new Date().getTime();
-        const expiryTime = parseInt(subscription.expiryTimeMillis || '0');
-        const startTime = parseInt(subscription.startTimeMillis || '0');
-        const autoRenewing = subscription.autoRenewing || false;
-        let status = 'pending';
-        if (subscription.cancelReason) {
-            status = 'cancelled';
-        }
-        else if (expiryTime < now) {
-            status = 'expired';
-        }
-        else if (subscription.paymentState === 1) {
-            status = 'active';
-        }
-        return {
-            isValid: true,
-            status,
-            subscriptionId: receipt,
-            startDate: new Date(startTime),
-            endDate: new Date(expiryTime),
-            autoRenew: autoRenewing
-        };
-    }
-    catch (error) {
-        console.error('Google Play subscription verification error:', error);
-        return {
-            isValid: false,
-            status: 'expired',
-            subscriptionId: receipt,
-            startDate: new Date(),
-            endDate: new Date(),
-            autoRenew: false
-        };
-    }
+/**
+ * Direct Google Play verification is NOT in use — purchases are verified through
+ * RevenueCat (see revenuecat.controller.ts), which also performs the purchase
+ * acknowledgement Play requires within 3 days.
+ *
+ * The previous implementation is in git history. It was removed rather than left
+ * in place because it was broken in a way that looked functional:
+ *
+ *  - it passed the same value as both `subscriptionId` (the product id) and
+ *    `token` (the purchase token), which the Play API cannot satisfy;
+ *  - it used the v1 `purchases.subscriptions` endpoint, superseded by
+ *    `purchases.subscriptionsv2` for products with base plans and offers;
+ *  - it never called `acknowledge()`, and Play automatically refunds any
+ *    purchase left unacknowledged for 3 days;
+ *  - it returned `isValid: true` even for expired subscriptions.
+ *
+ * To enable it properly: configure GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL,
+ * GOOGLE_PLAY_PRIVATE_KEY and GOOGLE_PLAY_PACKAGE_NAME; change the caller to
+ * pass productId and purchaseToken separately; use
+ * purchases.subscriptionsv2.get; and acknowledge the purchase on first verify.
+ */
+const verifyGooglePlaySubscription = (
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+receipt) => __awaiter(void 0, void 0, void 0, function* () {
+    throw new Error('Direct Google Play verification is not enabled. Subscriptions are verified via RevenueCat.');
 });
 exports.verifyGooglePlaySubscription = verifyGooglePlaySubscription;

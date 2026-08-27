@@ -37,7 +37,9 @@ router
   .route('/updatePassword')
   .put(isAuthenticated, validate(schema.updatePassword), auth.updatePassword);
 
-router.route('/deleteProfile/:id').delete(auth.deleteProfile);
+router.route('/delete-account').delete(isAuthenticated, auth.deleteProfile);
+router.route('/deleteProfile').delete(isAuthenticated, auth.deleteProfile);
+router.route('/deleteProfile/:id').delete(isAuthenticated, auth.deleteProfile);
 
 router
   .route('/updateProfile')

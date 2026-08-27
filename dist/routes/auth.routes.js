@@ -60,7 +60,9 @@ router
 router
     .route('/updatePassword')
     .put(auth_middleware_1.isAuthenticated, (0, validate_middleware_1.validate)(schema.updatePassword), auth.updatePassword);
-router.route('/deleteProfile/:id').delete(auth.deleteProfile);
+router.route('/delete-account').delete(auth_middleware_1.isAuthenticated, auth.deleteProfile);
+router.route('/deleteProfile').delete(auth_middleware_1.isAuthenticated, auth.deleteProfile);
+router.route('/deleteProfile/:id').delete(auth_middleware_1.isAuthenticated, auth.deleteProfile);
 router
     .route('/updateProfile')
     .put(auth_middleware_1.isAuthenticated, multer_middleware_1.default.single('profilePicture'), auth.updateProfile);

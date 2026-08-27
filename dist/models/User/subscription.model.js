@@ -48,6 +48,17 @@ const subscriptionSchema = new mongoose_1.default.Schema({
     lastVerifiedAt: {
         type: Date,
         default: Date.now
+    },
+    // Guards against out-of-order webhook delivery: an older event must not
+    // overwrite state written by a newer one.
+    lastEventTimestampMs: {
+        type: Number,
+        default: 0
+    },
+    // Set when Google Play pauses a subscription; null otherwise.
+    autoResumeAt: {
+        type: Date,
+        default: null
     }
 }, { timestamps: true });
 // Index for faster queries

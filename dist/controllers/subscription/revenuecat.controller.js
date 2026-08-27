@@ -19,8 +19,45 @@ const subscription_model_1 = __importDefault(require("../../models/user/subscrip
 const user_model_1 = __importDefault(require("../../models/user/user.model"));
 const subscription_config_1 = require("../../config/subscription.config");
 const revenueCat_1 = require("../../utils/revenueCat");
+const webhookEvent_model_1 = __importDefault(require("../../models/subscription/webhookEvent.model"));
+/**
+ * Removes an entitlement from the accounts a subscription was transferred away
+ * from, so the same purchase cannot keep two accounts entitled at once.
+ *
+ * RevenueCat identifies users here by app_user_id, which for this app is the
+ * account email.
+ */
+const revokeTransferredEntitlements = (transferredFrom, entitlementIds) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!Array.isArray(transferredFrom) || transferredFrom.length === 0)
+        return;
+    const types = new Set();
+    if (Array.isArray(entitlementIds)) {
+        for (const entId of entitlementIds) {
+            const mapped = subscription_config_1.MAP_ENTITLEMENT_TO_TYPE[entId];
+            if (mapped)
+                types.add(mapped);
+        }
+    }
+    if (types.size === 0)
+        return;
+    for (const previousAppUserId of transferredFrom) {
+        const previousUser = yield user_model_1.default.findOne({ email: previousAppUserId });
+        if (!previousUser)
+            continue;
+        const update = {};
+        for (const type of types) {
+            update[type === 'sustainbuddy_gpt'
+                ? 'subscriptions.sustainbuddyGPT'
+                : 'subscriptions.contentCreator'] = false;
+            yield subscription_model_1.default.updateMany({ user: previousUser._id, type }, { $set: { status: 'expired', autoRenew: false, lastVerifiedAt: new Date() } });
+        }
+        yield user_model_1.default.findByIdAndUpdate(previousUser._id, update);
+        console.log(`RevenueCat Webhook: revoked transferred entitlement(s) from user ${previousUser._id.toString()}`);
+    }
+});
 // Handle RevenueCat Unified Webhooks
 const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const { event } = req.body;
         if (!event) {
@@ -43,7 +80,53 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
                 res
             });
         }
-        const { type: eventType, app_user_id, original_transaction_id, expiration_at_ms, purchased_at_ms, entitlement_ids, auto_resume_at_ms } = event;
+        const { id: eventId, type: eventType, app_user_id, original_transaction_id, expiration_at_ms, purchased_at_ms, entitlement_ids, auto_resume_at_ms, event_timestamp_ms, transferred_from, transferred_to } = event;
+        // TEST events exist only to prove the endpoint is reachable. Creating
+        // subscription records from them would put junk in production data.
+        if (eventType === 'TEST') {
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Test event acknowledged' },
+                statusCode: 200
+            });
+        }
+        // Idempotency. RevenueCat retries anything it does not get a 2xx for, so
+        // the same event routinely arrives more than once. The unique index makes
+        // the check atomic — two concurrent deliveries cannot both win.
+        if (eventId) {
+            try {
+                yield webhookEvent_model_1.default.create({
+                    eventId,
+                    provider: 'revenue_cat',
+                    eventType: eventType || 'UNKNOWN'
+                });
+            }
+            catch (dupErr) {
+                if (dupErr.code === 11000) {
+                    return (0, successHandler_1.default)({
+                        res,
+                        data: { message: 'Event already processed' },
+                        statusCode: 200
+                    });
+                }
+                throw dupErr;
+            }
+        }
+        // TRANSFER moves entitlements between store accounts (Play account
+        // change, family sharing). The receiving user is granted below via the
+        // normal path; the previous holders must lose access here, otherwise two
+        // accounts keep the same entitlement.
+        if (eventType === 'TRANSFER') {
+            yield revokeTransferredEntitlements(transferred_from, entitlement_ids);
+            const target = Array.isArray(transferred_to) ? transferred_to[0] : undefined;
+            if (!target) {
+                return (0, successHandler_1.default)({
+                    res,
+                    data: { message: 'Transfer processed (no destination user)' },
+                    statusCode: 200
+                });
+            }
+        }
         if (!app_user_id) {
             return (0, successHandler_1.default)({
                 res,
@@ -107,13 +190,45 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
                 autoRenew = false;
                 break;
             case 'PRODUCT_CHANGE':
+            case 'SUBSCRIPTION_EXTENDED':
                 status = 'active';
                 autoRenew = true;
+                break;
+            case 'SUBSCRIPTION_PAUSED':
+                // Google Play pause. Access continues to the end of the period
+                // already paid for, then stops until auto_resume_at_ms.
+                status = isStillActive ? 'active' : 'expired';
+                autoRenew = false;
                 break;
             default:
                 // For other events, maintain current status based on expiration
                 status = isStillActive ? 'active' : 'expired';
                 break;
+        }
+        // Without an original_transaction_id there is nothing stable to key the
+        // record on, and upserting on `undefined` would collide on the unique
+        // index the moment a second such event arrived.
+        if (!original_transaction_id) {
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Ignored event without original_transaction_id' },
+                statusCode: 200
+            });
+        }
+        const existing = yield subscription_model_1.default.findOne({
+            platformSubscriptionId: original_transaction_id
+        });
+        // Ordering guard. Deliveries can arrive out of order, and applying a
+        // stale EXPIRATION after a fresh RENEWAL would revoke a paying user.
+        const incomingTs = Number(event_timestamp_ms) || 0;
+        if (existing &&
+            incomingTs > 0 &&
+            ((_a = existing.lastEventTimestampMs) !== null && _a !== void 0 ? _a : 0) > incomingTs) {
+            return (0, successHandler_1.default)({
+                res,
+                data: { message: 'Ignored out-of-order event' },
+                statusCode: 200
+            });
         }
         const subscriptionData = {
             user: user._id,
@@ -125,9 +240,11 @@ const handleRevenueCatWebhook = (req, res) => __awaiter(void 0, void 0, void 0, 
             platformSubscriptionId: original_transaction_id,
             receiptData: event,
             autoRenew,
-            lastVerifiedAt: new Date()
+            lastVerifiedAt: new Date(),
+            lastEventTimestampMs: incomingTs,
+            autoResumeAt: auto_resume_at_ms ? new Date(auto_resume_at_ms) : null
         };
-        const subscription = yield subscription_model_1.default.findOneAndUpdate({ platformSubscriptionId: original_transaction_id }, subscriptionData, { upsert: true, new: true });
+        yield subscription_model_1.default.findOneAndUpdate({ platformSubscriptionId: original_transaction_id }, subscriptionData, { upsert: true, new: true });
         // Update user's subscription status in the User model
         const updateData = {};
         const isEntitled = status === 'active';

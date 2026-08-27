@@ -14,6 +14,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteProfile = exports.pushNotification = exports.findUsers = exports.updateProfile = exports.removeSessions = exports.updatePassword = exports.resetPassword = exports.forgotPassword = exports.logout = exports.me = exports.login = exports.verifyEmail = exports.requestEmailToken = exports.register = exports.greenPoints = exports.toggleNotifications = void 0;
 const user_model_1 = __importDefault(require("../models/user/user.model"));
+const address_model_1 = __importDefault(require("../models/user/address.model"));
 const successHandler_1 = __importDefault(require("../utils/successHandler"));
 const errorHandler_1 = __importDefault(require("../utils/errorHandler"));
 const passport_1 = __importDefault(require("passport"));
@@ -709,9 +710,27 @@ const toggleNotifications = (req, res) => __awaiter(void 0, void 0, void 0, func
 });
 exports.toggleNotifications = toggleNotifications;
 const deleteProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
-        const { id } = req.params;
-        const user = yield user_model_1.default.findOne({ _id: id, role: 'user' });
+        const targetUserId = req.params.id || ((_a = req.user) === null || _a === void 0 ? void 0 : _a._id);
+        if (!targetUserId) {
+            return (0, errorHandler_1.default)({
+                message: 'User ID is required',
+                statusCode: 400,
+                req,
+                res
+            });
+        }
+        const currentUser = req.user;
+        if (req.params.id && currentUser && currentUser.role !== 'admin' && currentUser._id.toString() !== req.params.id) {
+            return (0, errorHandler_1.default)({
+                message: 'Unauthorized to delete this account',
+                statusCode: 403,
+                req,
+                res
+            });
+        }
+        const user = yield user_model_1.default.findById(targetUserId);
         if (!user) {
             return (0, errorHandler_1.default)({
                 message: 'User not found',
@@ -720,9 +739,27 @@ const deleteProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
                 res
             });
         }
-        yield user.delete();
+        // Cascade cleanup
+        yield address_model_1.default.deleteMany({ user: targetUserId });
+        yield user_model_1.default.findByIdAndDelete(targetUserId);
+        if (req.user && req.user._id.toString() === targetUserId.toString()) {
+            req.logout((err) => {
+                if (err) {
+                    // Log error but proceed with session destroy
+                }
+                req.session.destroy(() => {
+                    res.clearCookie('connect.sid');
+                    return (0, successHandler_1.default)({
+                        data: { message: 'Account deleted successfully' },
+                        statusCode: 200,
+                        res
+                    });
+                });
+            });
+            return;
+        }
         return (0, successHandler_1.default)({
-            data: { user: user, message: 'User successfully updated' },
+            data: { message: 'Account deleted successfully' },
             statusCode: 200,
             res
         });
