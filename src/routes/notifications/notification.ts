@@ -6,6 +6,9 @@ const router: Router = express.Router();
 
 router.route('/all').get(notificationController.fetchNotificationForAdmin);
 router
+  .route('/send')
+  .post(isAuthenticated, notificationController.sendNotificationFromAdmin);
+router
   .route('/')
   .get(isAuthenticated, notificationController.fetchNotification);
 router

@@ -74,7 +74,10 @@ const getAllProjects: RequestHandler = async (req, res) => {
               }
             },
             {
-              $unwind: '$user'
+              $unwind: {
+                path: '$user',
+                preserveNullAndEmptyArrays: true
+              }
             },
             {
               $skip: skip

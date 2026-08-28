@@ -3,6 +3,7 @@ import ErrorHandler from '../../utils/errorHandler';
 import SuccessHandler from '../../utils/successHandler';
 import GreenMap from '../../models/green-map/green-map.model';
 import User from '../../models/user/user.model';
+import { Setting } from '../../models/settings';
 import { sentPushNotification } from '../../utils/firebase';
 
 const createGreenMap: RequestHandler = async (req, res) => {
@@ -170,7 +171,8 @@ const rewardGreenMap: RequestHandler = async (req, res) => {
         res
       });
     }
-    const greenMapGreenPoints = greenMap.greenPointsPerTime || 0;
+    const setting = await Setting.findOne().sort({ createdAt: -1 });
+    const greenMapGreenPoints = Number(greenMap.greenPointsPerTime || setting?.greenMapGreenPoints || 0);
     await User.updateOne(
       { _id: req.user?._id },
       {

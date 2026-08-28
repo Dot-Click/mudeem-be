@@ -9,53 +9,71 @@ const getLeaderboard: RequestHandler = async (req, res) => {
   try {
     const { type } = req.query;
     // type: all, today, week
-    let matchStage: any = {};
+    let data;
+
     if (type === 'today') {
-      matchStage = {
-        'greenPointsHistory.date': {
-          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          $lt: new Date(new Date().setHours(23, 59, 59, 999))
-        }
-      };
+      const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+      const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
+      data = await User.aggregate([
+        { $unwind: '$greenPointsHistory' },
+        {
+          $match: {
+            'greenPointsHistory.date': { $gte: startOfDay, $lt: endOfDay }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id',
+            name: { $first: '$name' },
+            email: { $first: '$email' },
+            phone: { $first: '$phone' },
+            profilePicture: { $first: '$profilePicture' },
+            points: { $sum: '$greenPointsHistory.points' }
+          }
+        },
+        { $sort: { points: -1 } }
+      ]);
     } else if (type === 'week') {
-      matchStage = {
-        ' .date': {
-          $gte: new Date(new Date().setDate(new Date().getDate() - 7)).setHours(
-            0,
-            0,
-            0,
-            0
-          )
-        }
-      };
+      const startOfWeek = new Date(new Date().setDate(new Date().getDate() - 7));
+      startOfWeek.setHours(0, 0, 0, 0);
+      data = await User.aggregate([
+        { $unwind: '$greenPointsHistory' },
+        {
+          $match: {
+            'greenPointsHistory.date': { $gte: startOfWeek }
+          }
+        },
+        {
+          $group: {
+            _id: '$_id',
+            name: { $first: '$name' },
+            email: { $first: '$email' },
+            phone: { $first: '$phone' },
+            profilePicture: { $first: '$profilePicture' },
+            points: { $sum: '$greenPointsHistory.points' }
+          }
+        },
+        { $sort: { points: -1 } }
+      ]);
     } else {
-      matchStage = {};
+      data = await User.aggregate([
+        {
+          $project: {
+            _id: 1,
+            name: 1,
+            email: 1,
+            phone: 1,
+            profilePicture: 1,
+            points: { $ifNull: ['$greenPoints', 0] }
+          }
+        },
+        { $sort: { points: -1, name: 1 } }
+      ]);
     }
 
-    const data = await User.aggregate([
-      {
-        $unwind: '$greenPointsHistory'
-      },
-      {
-        $match: matchStage
-      },
-      {
-        $group: {
-          _id: '$_id',
-          name: { $first: '$name' },
-          email: { $first: '$email' },
-          phone: { $first: '$phone' },
-          profilePicture: { $first: '$profilePicture' },
-          points: { $sum: '$greenPointsHistory.points' }
-        }
-      },
-      {
-        $sort: { points: -1 }
-      }
-    ]);
     return SuccessHandler({
       res,
-      data,
+      data: data || [],
       statusCode: 200
     });
   } catch (error) {

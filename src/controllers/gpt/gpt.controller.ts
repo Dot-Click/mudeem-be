@@ -3,6 +3,8 @@ import ErrorHandler from '../../utils/errorHandler';
 import mongoose from 'mongoose';
 import SuccessHandler from '../../utils/successHandler';
 import Chat from '../../models/gpt/chat.model';
+import User from '../../models/user/user.model';
+import { Setting } from '../../models/settings';
 import { generateAiResponse, createThread } from '../../utils/openai';
 
 const FALLBACK_BOT_MESSAGE =
@@ -53,6 +55,26 @@ const sendMessage: RequestHandler = async (req, res) => {
         messages: initialMessages,
         thread
       });
+
+      const setting = await Setting.findOne().sort({ createdAt: -1 });
+      const pts = Number(setting?.gptMessageGreenPoints || 0);
+      if (pts > 0 && req.user?._id) {
+        await User.updateOne(
+          { _id: req.user._id },
+          {
+            $inc: { greenPoints: pts },
+            $push: {
+              greenPointsHistory: {
+                points: pts,
+                reason: 'SustainBuddy GPT Chat',
+                type: 'credit',
+                date: new Date()
+              }
+            }
+          }
+        );
+      }
+
       return SuccessHandler({
         res,
         data: { response },
@@ -73,6 +95,26 @@ const sendMessage: RequestHandler = async (req, res) => {
       { sender: 'bot', content: response }
     );
     await exChat.save();
+
+    const setting = await Setting.findOne().sort({ createdAt: -1 });
+    const pts = Number(setting?.gptMessageGreenPoints || 0);
+    if (pts > 0 && req.user?._id) {
+      await User.updateOne(
+        { _id: req.user._id },
+        {
+          $inc: { greenPoints: pts },
+          $push: {
+            greenPointsHistory: {
+              points: pts,
+              reason: 'SustainBuddy GPT Chat',
+              type: 'credit',
+              date: new Date()
+            }
+          }
+        }
+      );
+    }
+
     return SuccessHandler({
       res,
       data: { chat: response },

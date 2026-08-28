@@ -617,7 +617,7 @@ const updateProfile: RequestHandler = async (req, res) => {
     if (phone) user.phone = phone;
     if (username) user.username = username;
     if (link) user.profilePicture = link.secure_url;
-    user.save();
+    await user.save();
     return SuccessHandler({
       data: { user: user, message: 'User successfully updated' },
       statusCode: 200,

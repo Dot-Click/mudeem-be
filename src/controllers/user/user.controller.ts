@@ -40,7 +40,7 @@ const changeUserStatus: RequestHandler = async (req, res) => {
       });
     }
 
-    isUserExist.isActive = !isUserExist;
+    isUserExist.isActive = !isUserExist.isActive;
     await isUserExist.save();
     return SuccessHandler({
       res,
