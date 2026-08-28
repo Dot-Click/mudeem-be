@@ -42,24 +42,29 @@ const fetchNotification: RequestHandler = async (req, res) => {
 const updateSeenNotification: RequestHandler = async (req, res) => {
   try {
     const userId = req.user?._id;
+    const userRole = (req.user as any)?.role;
+    const { notificationId } = req.body || {};
+
+    let query: any = {};
+    if (notificationId) {
+      query = { _id: notificationId };
+    } else if (userRole === 'admin') {
+      // Admin marks all notifications as seen
+      query = {};
+    } else if (userId) {
+      query = { user: new mongoose.Types.ObjectId(userId) };
+    }
+
     const notification = await Notification.updateMany(
-      { user: new mongoose.Types.ObjectId(userId) },
+      query,
       { $set: { seen: true } }
     );
-    if (!notification) {
-      return ErrorHandler({
-        message: 'Notification not found',
-        statusCode: 400,
-        req,
-        res
-      });
-    } else {
-      return SuccessHandler({
-        data: notification,
-        statusCode: 200,
-        res
-      });
-    }
+
+    return SuccessHandler({
+      data: notification,
+      statusCode: 200,
+      res
+    });
   } catch (error) {
     return ErrorHandler({
       message: (error as Error).message,
