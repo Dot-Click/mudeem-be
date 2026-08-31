@@ -15,6 +15,12 @@ const getLeaderboard: RequestHandler = async (req, res) => {
       const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
       const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
       data = await User.aggregate([
+        {
+          $match: {
+            role: { $ne: 'admin' },
+            isActive: { $ne: false }
+          }
+        },
         { $unwind: '$greenPointsHistory' },
         {
           $match: {
@@ -37,6 +43,12 @@ const getLeaderboard: RequestHandler = async (req, res) => {
       const startOfWeek = new Date(new Date().setDate(new Date().getDate() - 7));
       startOfWeek.setHours(0, 0, 0, 0);
       data = await User.aggregate([
+        {
+          $match: {
+            role: { $ne: 'admin' },
+            isActive: { $ne: false }
+          }
+        },
         { $unwind: '$greenPointsHistory' },
         {
           $match: {
@@ -57,6 +69,12 @@ const getLeaderboard: RequestHandler = async (req, res) => {
       ]);
     } else {
       data = await User.aggregate([
+        {
+          $match: {
+            role: { $ne: 'admin' },
+            isActive: { $ne: false }
+          }
+        },
         {
           $project: {
             _id: 1,
@@ -104,6 +122,12 @@ const getLeaderboardById: RequestHandler = async (req, res) => {
     }
     const data = await User.aggregate([
       {
+        $match: {
+          role: { $ne: 'admin' },
+          isActive: { $ne: false }
+        }
+      },
+      {
         $unwind: '$greenPointsHistory'
       },
       {
@@ -117,7 +141,7 @@ const getLeaderboardById: RequestHandler = async (req, res) => {
       {
         $sort: { points: -1 }
       }
-    ]); // get all users and their greenPoints
+    ]); // get all non-admin users and their greenPoints
     const rank = data.findIndex((item: any) => item._id.toString() === id);
     return SuccessHandler({
       res,

@@ -50,7 +50,7 @@ const changeUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 res
             });
         }
-        isUserExist.isActive = !isUserExist;
+        isUserExist.isActive = !isUserExist.isActive;
         yield isUserExist.save();
         return (0, successHandler_1.default)({
             res,

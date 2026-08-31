@@ -617,7 +617,7 @@ const updateProfile = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             user.username = username;
         if (link)
             user.profilePicture = link.secure_url;
-        user.save();
+        yield user.save();
         return (0, successHandler_1.default)({
             data: { user: user, message: 'User successfully updated' },
             statusCode: 200,

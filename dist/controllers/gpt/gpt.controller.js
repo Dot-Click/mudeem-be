@@ -16,10 +16,12 @@ exports.getChat = exports.sendMessage = void 0;
 const errorHandler_1 = __importDefault(require("../../utils/errorHandler"));
 const successHandler_1 = __importDefault(require("../../utils/successHandler"));
 const chat_model_1 = __importDefault(require("../../models/gpt/chat.model"));
+const user_model_1 = __importDefault(require("../../models/user/user.model"));
+const settings_1 = require("../../models/settings");
 const openai_1 = require("../../utils/openai");
 const FALLBACK_BOT_MESSAGE = "I couldn't generate a response. Please try again.";
 const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c, _d, _e, _f, _g;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     // #swagger.tags = ['gpt']
     try {
         if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.subscriptions.sustainbuddyGPT)) {
@@ -60,6 +62,21 @@ const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
                 messages: initialMessages,
                 thread
             });
+            const setting = yield settings_1.Setting.findOne().sort({ createdAt: -1 });
+            const pts = Number((setting === null || setting === void 0 ? void 0 : setting.gptMessageGreenPoints) || 0);
+            if (pts > 0 && ((_g = req.user) === null || _g === void 0 ? void 0 : _g._id)) {
+                yield user_model_1.default.updateOne({ _id: req.user._id }, {
+                    $inc: { greenPoints: pts },
+                    $push: {
+                        greenPointsHistory: {
+                            points: pts,
+                            reason: 'SustainBuddy GPT Chat',
+                            type: 'credit',
+                            date: new Date()
+                        }
+                    }
+                });
+            }
             return (0, successHandler_1.default)({
                 res,
                 data: { response },
@@ -68,9 +85,24 @@ const sendMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         }
         const messageText = yield (0, openai_1.generateAiResponse)(exChat.thread, userMessage, ['environment', 'greenry']);
         const pattern = /【\d+:\d+†source】/g;
-        const response = ((_g = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, '')) !== null && _g !== void 0 ? _g : '').trim() || FALLBACK_BOT_MESSAGE;
+        const response = ((_h = messageText === null || messageText === void 0 ? void 0 : messageText.replace(pattern, '')) !== null && _h !== void 0 ? _h : '').trim() || FALLBACK_BOT_MESSAGE;
         exChat.messages.push({ sender: 'user', content: userMessage }, { sender: 'bot', content: response });
         yield exChat.save();
+        const setting = yield settings_1.Setting.findOne().sort({ createdAt: -1 });
+        const pts = Number((setting === null || setting === void 0 ? void 0 : setting.gptMessageGreenPoints) || 0);
+        if (pts > 0 && ((_j = req.user) === null || _j === void 0 ? void 0 : _j._id)) {
+            yield user_model_1.default.updateOne({ _id: req.user._id }, {
+                $inc: { greenPoints: pts },
+                $push: {
+                    greenPointsHistory: {
+                        points: pts,
+                        reason: 'SustainBuddy GPT Chat',
+                        type: 'credit',
+                        date: new Date()
+                    }
+                }
+            });
+        }
         return (0, successHandler_1.default)({
             res,
             data: { chat: response },

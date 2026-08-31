@@ -17,6 +17,7 @@ const errorHandler_1 = __importDefault(require("../../utils/errorHandler"));
 const successHandler_1 = __importDefault(require("../../utils/successHandler"));
 const green_map_model_1 = __importDefault(require("../../models/green-map/green-map.model"));
 const user_model_1 = __importDefault(require("../../models/user/user.model"));
+const settings_1 = require("../../models/settings");
 const firebase_1 = require("../../utils/firebase");
 const createGreenMap = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // #swagger.tags = ['green-map']
@@ -174,7 +175,8 @@ const rewardGreenMap = (req, res) => __awaiter(void 0, void 0, void 0, function*
                 res
             });
         }
-        const greenMapGreenPoints = greenMap.greenPointsPerTime || 0;
+        const setting = yield settings_1.Setting.findOne().sort({ createdAt: -1 });
+        const greenMapGreenPoints = Number(greenMap.greenPointsPerTime || (setting === null || setting === void 0 ? void 0 : setting.greenMapGreenPoints) || 0);
         yield user_model_1.default.updateOne({ _id: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id }, {
             $inc: { greenPoints: greenMapGreenPoints },
             $push: {

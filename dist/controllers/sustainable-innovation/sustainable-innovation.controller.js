@@ -83,7 +83,10 @@ const getAllProjects = (req, res) => __awaiter(void 0, void 0, void 0, function*
                             }
                         },
                         {
-                            $unwind: '$user'
+                            $unwind: {
+                                path: '$user',
+                                preserveNullAndEmptyArrays: true
+                            }
                         },
                         {
                             $skip: skip

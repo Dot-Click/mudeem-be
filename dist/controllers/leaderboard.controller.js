@@ -21,49 +21,89 @@ const getLeaderboard = (req, res) => __awaiter(void 0, void 0, void 0, function*
     try {
         const { type } = req.query;
         // type: all, today, week
-        let matchStage = {};
+        let data;
         if (type === 'today') {
-            matchStage = {
-                'greenPointsHistory.date': {
-                    $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                    $lt: new Date(new Date().setHours(23, 59, 59, 999))
-                }
-            };
+            const startOfDay = new Date(new Date().setHours(0, 0, 0, 0));
+            const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
+            data = yield user_model_1.default.aggregate([
+                {
+                    $match: {
+                        role: { $ne: 'admin' },
+                        isActive: { $ne: false }
+                    }
+                },
+                { $unwind: '$greenPointsHistory' },
+                {
+                    $match: {
+                        'greenPointsHistory.date': { $gte: startOfDay, $lt: endOfDay }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$_id',
+                        name: { $first: '$name' },
+                        email: { $first: '$email' },
+                        phone: { $first: '$phone' },
+                        profilePicture: { $first: '$profilePicture' },
+                        points: { $sum: '$greenPointsHistory.points' }
+                    }
+                },
+                { $sort: { points: -1 } }
+            ]);
         }
         else if (type === 'week') {
-            matchStage = {
-                ' .date': {
-                    $gte: new Date(new Date().setDate(new Date().getDate() - 7)).setHours(0, 0, 0, 0)
-                }
-            };
+            const startOfWeek = new Date(new Date().setDate(new Date().getDate() - 7));
+            startOfWeek.setHours(0, 0, 0, 0);
+            data = yield user_model_1.default.aggregate([
+                {
+                    $match: {
+                        role: { $ne: 'admin' },
+                        isActive: { $ne: false }
+                    }
+                },
+                { $unwind: '$greenPointsHistory' },
+                {
+                    $match: {
+                        'greenPointsHistory.date': { $gte: startOfWeek }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$_id',
+                        name: { $first: '$name' },
+                        email: { $first: '$email' },
+                        phone: { $first: '$phone' },
+                        profilePicture: { $first: '$profilePicture' },
+                        points: { $sum: '$greenPointsHistory.points' }
+                    }
+                },
+                { $sort: { points: -1 } }
+            ]);
         }
         else {
-            matchStage = {};
+            data = yield user_model_1.default.aggregate([
+                {
+                    $match: {
+                        role: { $ne: 'admin' },
+                        isActive: { $ne: false }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 1,
+                        name: 1,
+                        email: 1,
+                        phone: 1,
+                        profilePicture: 1,
+                        points: { $ifNull: ['$greenPoints', 0] }
+                    }
+                },
+                { $sort: { points: -1, name: 1 } }
+            ]);
         }
-        const data = yield user_model_1.default.aggregate([
-            {
-                $unwind: '$greenPointsHistory'
-            },
-            {
-                $match: matchStage
-            },
-            {
-                $group: {
-                    _id: '$_id',
-                    name: { $first: '$name' },
-                    email: { $first: '$email' },
-                    phone: { $first: '$phone' },
-                    profilePicture: { $first: '$profilePicture' },
-                    points: { $sum: '$greenPointsHistory.points' }
-                }
-            },
-            {
-                $sort: { points: -1 }
-            }
-        ]);
         return (0, successHandler_1.default)({
             res,
-            data,
+            data: data || [],
             statusCode: 200
         });
     }
@@ -94,6 +134,12 @@ const getLeaderboardById = (req, res) => __awaiter(void 0, void 0, void 0, funct
         }
         const data = yield user_model_1.default.aggregate([
             {
+                $match: {
+                    role: { $ne: 'admin' },
+                    isActive: { $ne: false }
+                }
+            },
+            {
                 $unwind: '$greenPointsHistory'
             },
             {
@@ -107,7 +153,7 @@ const getLeaderboardById = (req, res) => __awaiter(void 0, void 0, void 0, funct
             {
                 $sort: { points: -1 }
             }
-        ]); // get all users and their greenPoints
+        ]); // get all non-admin users and their greenPoints
         const rank = data.findIndex((item) => item._id.toString() === id);
         return (0, successHandler_1.default)({
             res,
