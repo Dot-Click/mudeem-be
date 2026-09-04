@@ -4,8 +4,17 @@ import { isAdmin, isAuthenticated } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import * as schema from '../validations/auth.schema';
 import multerMiddleware from '../middleware/multer.middleware';
+import { createUserRateLimitMiddleware } from '../middleware/rateLimit.middleware';
 
 const router: Router = express.Router();
+
+// /forgotPassword answers whether an email is registered, so cap it per IP to
+// keep that from being used to enumerate accounts in bulk.
+const forgotPasswordRateLimit = createUserRateLimitMiddleware(
+  5,
+  15 * 60 * 1000,
+  'Too many password reset attempts. Please try again in 15 minutes.'
+);
 
 // GET routes
 router.route('/logout').get(auth.logout);
@@ -27,7 +36,11 @@ router
   .post(validate(schema.verifyEmailToken), auth.verifyEmail);
 router
   .route('/forgotPassword')
-  .post(validate(schema.requestEmailToken), auth.forgotPassword);
+  .post(
+    forgotPasswordRateLimit,
+    validate(schema.requestEmailToken),
+    auth.forgotPassword
+  );
 
 // PUT routes
 router

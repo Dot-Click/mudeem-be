@@ -25,6 +25,7 @@ export interface SendMailParams {
   email: string;
   subject: string;
   text: string;
+  html?: string;
 }
 
 export interface SuccessHandlerParams<T> {

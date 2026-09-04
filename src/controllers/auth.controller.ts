@@ -11,6 +11,7 @@ import mongoose from 'mongoose';
 import SendMail from '../utils/sendMail';
 import uploadFile from '../utils/upload';
 import { sentPushNotification } from '../utils/firebase';
+import logger from '../utils/logger';
 
 /** Case-insensitive email lookup (trimmed). Uses MongoDB collation so casing never matters. */
 const findUserByEmail = async (email: string, select?: string): Promise<IUser | null> => {
@@ -378,19 +379,36 @@ const logout: RequestHandler = async (req, res) => {
   }
 };
 
-//forgot password — always return same message (don't leak "user does not exist")
+/** Multipart HTML body for the password reset code. */
+const passwordResetHtml = (token: number): string => `
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;color:#1f2937">
+    <p>You asked to reset your Mudeem password.</p>
+    <p>Your password reset code is:</p>
+    <p style="font-size:28px;font-weight:bold;letter-spacing:4px">${token}</p>
+    <p>It expires in 10 minutes. If you didn't request this, you can ignore this email.</p>
+  </div>
+`;
+
+// forgot password
+// Reports "no account" explicitly so the apps can tell the user their email is
+// not registered instead of showing a reset code screen that can never work.
+// This does make the endpoint an account-enumeration oracle; the rate limit in
+// src/routes/auth.routes.ts is what keeps it from being enumerated in bulk.
 const forgotPassword: RequestHandler = async (req, res) => {
   // #swagger.tags = ['auth']
-  const genericMessage =
-    'If an account exists with this email, you will receive a password reset link.';
-
   try {
     const { email } = req.body as authTypes.RequestEmailTokenBody;
     const user: IUser | null = await findUserByEmail(email ?? '');
     if (!user) {
-      return SuccessHandler({
-        data: genericMessage,
-        statusCode: 200,
+      logger.warn({
+        event: 'auth.forgotPassword.noAccount',
+        email: (email ?? '').trim()
+      });
+      return ErrorHandler({
+        message: 'No account is registered with this email',
+        statusCode: 404,
+        code: 'ACCOUNT_NOT_FOUND',
+        req,
         res
       });
     }
@@ -405,9 +423,29 @@ const forgotPassword: RequestHandler = async (req, res) => {
     await user.save();
     const message: string = `Your password reset token is ${passwordResetToken} and it expires in 10 minutes`;
     const subject: string = `Password reset token`;
-    await SendMail({ email: user.email, subject, text: message });
+    try {
+      // Text-only mail from a no-reply subdomain is a spam-filter magnet; send
+      // a multipart message so the code reaches the inbox.
+      await SendMail({
+        email: user.email,
+        subject,
+        text: message,
+        html: passwordResetHtml(passwordResetToken)
+      });
+    } catch {
+      // SendMail has already logged the recipient and the provider's reason.
+      // Don't pass the provider's wording to the client.
+      return ErrorHandler({
+        message:
+          'We could not send the reset email right now. Please try again in a few minutes.',
+        statusCode: 502,
+        code: 'MAIL_SEND_FAILED',
+        req,
+        res
+      });
+    }
     return SuccessHandler({
-      data: genericMessage,
+      data: `Password reset code sent to ${user.email}`,
       statusCode: 200,
       res
     });
