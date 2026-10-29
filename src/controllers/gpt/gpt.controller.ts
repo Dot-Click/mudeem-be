@@ -4,11 +4,28 @@ import mongoose from 'mongoose';
 import SuccessHandler from '../../utils/successHandler';
 import Chat from '../../models/gpt/chat.model';
 import User from '../../models/user/user.model';
+import GptUsage from '../../models/gpt/gptUsage.model';
 import { Setting } from '../../models/settings';
 import { generateAiResponse, createThread } from '../../utils/openai';
 
 const FALLBACK_BOT_MESSAGE =
   "I couldn't generate a response. Please try again.";
+
+const DAILY_LIMIT = 50;
+
+const refundDailyUsage = async (
+  userId: unknown,
+  dateKey: string
+): Promise<void> => {
+  try {
+    await GptUsage.updateOne(
+      { user: userId, date: dateKey, count: { $gt: 0 } },
+      { $inc: { count: -1 } }
+    );
+  } catch {
+    // A failed refund must not mask the original provider error.
+  }
+};
 
 const sendMessage: RequestHandler = async (req, res) => {
   // #swagger.tags = ['gpt']
@@ -33,6 +50,26 @@ const sendMessage: RequestHandler = async (req, res) => {
       });
     }
 
+    const userId = req.user?._id;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const usage = await GptUsage.findOneAndUpdate(
+      { user: userId, date: todayKey },
+      { $inc: { count: 1 } },
+      { upsert: true, new: true }
+    );
+    if (usage.count > DAILY_LIMIT) {
+      // The app maps `code` to a translated message. A bare 429 is
+      // indistinguishable from the per-minute limiter, which tells the user to
+      // retry "in a moment" — wrong advice for a cap that resets tomorrow.
+      return ErrorHandler({
+        message: 'Daily SustainBuddy GPT message limit reached',
+        statusCode: 429,
+        code: 'DAILY_LIMIT',
+        req,
+        res
+      });
+    }
+
     const exChat = await Chat.findOne({
       user: req.user?._id
     });
@@ -42,6 +79,11 @@ const sendMessage: RequestHandler = async (req, res) => {
         'environment',
         'greenry'
       ]);
+      if (!messageText) {
+        // The provider call never produced a response, so give the user
+        // their daily allowance back instead of silently burning it.
+        await refundDailyUsage(userId, todayKey);
+      }
       const pattern = /【\d+:\d+†source】/g;
       const response =
         (messageText?.replace(pattern, '') ?? '').trim() ||
@@ -87,6 +129,11 @@ const sendMessage: RequestHandler = async (req, res) => {
       userMessage,
       ['environment', 'greenry']
     );
+    if (!messageText) {
+      // The provider call never produced a response, so give the user
+      // their daily allowance back instead of silently burning it.
+      await refundDailyUsage(userId, todayKey);
+    }
     const pattern = /【\d+:\d+†source】/g;
     const response =
       (messageText?.replace(pattern, '') ?? '').trim() || FALLBACK_BOT_MESSAGE;

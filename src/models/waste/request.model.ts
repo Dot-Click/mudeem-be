@@ -10,8 +10,12 @@ const requestSchema = new mongoose.Schema(
     },
     company: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Company',
-      required: true
+      ref: 'Company'
+    },
+    // Free-text company name used when the user picks "Other" instead of
+    // one of the admin-managed companies above.
+    companyName: {
+      type: String
     },
     status: {
       type: String,

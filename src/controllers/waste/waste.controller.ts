@@ -76,7 +76,8 @@ const createRequest: RequestHandler = async (req, res) => {
       address1,
       address2,
       pickupDateTime,
-      company
+      company,
+      companyName
     } = req.body;
 
     const userId = req.user?._id;
@@ -96,9 +97,23 @@ const createRequest: RequestHandler = async (req, res) => {
         res
       });
     }
-    if (!company || !mongoose.Types.ObjectId.isValid(String(company))) {
+
+    const hasCompanyId = !!company;
+    const hasCompanyName =
+      typeof companyName === 'string' && companyName.trim().length > 0;
+
+    if (hasCompanyId && !mongoose.Types.ObjectId.isValid(String(company))) {
       return ErrorHandler({
         message: 'Invalid company id',
+        statusCode: 400,
+        req,
+        res
+      });
+    }
+
+    if (!hasCompanyId && !hasCompanyName) {
+      return ErrorHandler({
+        message: 'Company or company name is required',
         statusCode: 400,
         req,
         res
@@ -113,7 +128,8 @@ const createRequest: RequestHandler = async (req, res) => {
       address2,
       pickupDateTime,
       user: userId,
-      company
+      ...(hasCompanyId ? { company } : {}),
+      ...(hasCompanyName ? { companyName: companyName.trim() } : {})
     });
     return SuccessHandler({
       res,

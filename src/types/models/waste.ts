@@ -13,7 +13,8 @@ export interface ICompany extends Document {
 export interface IRequest extends Document {
   wasteType: string;
   quantity: number;
-  company: Schema.Types.ObjectId;
+  company?: Schema.Types.ObjectId;
+  companyName?: string;
   status: string;
   user: Schema.Types.ObjectId;
   description: string;

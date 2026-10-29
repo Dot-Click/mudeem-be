@@ -34,7 +34,17 @@ export const generateAiResponse = async (
     let completed = false;
     let aiResponse: string | null = null;
 
+    // Hard cap on polling so a stuck/slow run can never poll forever and
+    // burn requests indefinitely. ~60 iterations * 800ms ≈ 48 seconds.
+    const MAX_POLL_ITERATIONS = 60;
+    let iterations = 0;
+
     while (!completed) {
+      if (iterations >= MAX_POLL_ITERATIONS) {
+        throw new Error('AI response timed out');
+      }
+      iterations += 1;
+
       // Wait for a short interval before checking status again
       await new Promise((resolve) => setTimeout(resolve, 800));
 
